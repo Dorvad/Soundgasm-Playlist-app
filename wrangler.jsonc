@@ -1,0 +1,13 @@
+// wrangler.jsonc
+{
+  // Give it any name you like. This becomes part of your workers.dev URL.
+  "name": "soundgasm-resolver",
+  "main": "src/worker.js",
+  "compatibility_date": "2025-11-11",
+
+  // Optional but handy for local testing
+  "dev": {
+    "port": 8787
+  }
+}
+
