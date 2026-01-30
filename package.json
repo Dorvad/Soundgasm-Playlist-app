@@ -1,0 +1,14 @@
+// package.json
+{
+  "name": "soundgasm-resolver-worker",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Cloudflare Worker that resolves a Soundgasm page URL into a direct audio URL for browser playback.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
