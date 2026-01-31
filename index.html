@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Soundgasm Playlist Player</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="app__header">
+        <h1>Soundgasm Playlist Player</h1>
+        <p>Paste Soundgasm page URLs, build a queue, and play them in order.</p>
+      </header>
+
+      <section class="card">
+        <label for="urlInput">Soundgasm URLs (one per line)</label>
+        <textarea
+          id="urlInput"
+          rows="6"
+          placeholder="https://soundgasm.net/user/track-name"
+        ></textarea>
+        <div class="actions">
+          <button id="addBtn" type="button">Add</button>
+          <button id="playBtn" type="button">Play</button>
+          <button id="nextBtn" type="button">Next</button>
+          <button id="clearBtn" type="button">Clear</button>
+        </div>
+        <p id="status" class="status" role="status">Ready.</p>
+      </section>
+
+      <section class="card">
+        <h2>Queue</h2>
+        <ul id="queueList" class="queue"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Player</h2>
+        <audio id="audio" controls preload="none"></audio>
+        <p id="nowPlaying" class="now-playing">Nothing playing.</p>
+      </section>
+    </main>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>

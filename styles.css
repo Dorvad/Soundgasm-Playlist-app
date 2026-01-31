@@ -1,0 +1,157 @@
+:root {
+  color-scheme: light dark;
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  line-height: 1.5;
+  --bg: #0f172a;
+  --card: #111827;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --accent: #38bdf8;
+  --accent-dark: #0ea5e9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #1e293b, var(--bg));
+  color: var(--text);
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.app__header h1 {
+  margin-bottom: 0.25rem;
+  font-size: 2rem;
+}
+
+.app__header p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.card {
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+  border: 1px solid #1f2937;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+  display: grid;
+  gap: 1rem;
+}
+
+label {
+  font-weight: 600;
+}
+
+textarea {
+  width: 100%;
+  border-radius: 12px;
+  padding: 0.75rem;
+  border: 1px solid #334155;
+  background: #0b1120;
+  color: var(--text);
+  font-size: 0.95rem;
+  resize: vertical;
+  min-height: 140px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+button {
+  border: none;
+  border-radius: 999px;
+  padding: 0.6rem 1.25rem;
+  font-weight: 600;
+  background: var(--accent);
+  color: #0b1120;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.2s ease;
+}
+
+button:hover {
+  background: var(--accent-dark);
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status,
+.now-playing {
+  color: var(--muted);
+  margin: 0;
+}
+
+.queue {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.queue__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: #0b1120;
+  border: 1px solid #1f2937;
+}
+
+.queue__meta {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.queue__title {
+  font-weight: 600;
+}
+
+.queue__url {
+  color: var(--muted);
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+
+.queue__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.queue__actions button {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 700px) {
+  .queue__item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .queue__actions {
+    width: 100%;
+  }
+
+  .queue__actions button {
+    flex: 1;
+  }
+}
