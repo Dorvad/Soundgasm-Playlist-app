@@ -10,34 +10,44 @@
     <main class="app">
       <header class="app__header">
         <h1>Soundgasm Playlist Player</h1>
-        <p>Paste Soundgasm page URLs, build a queue, and play them in order.</p>
+        <p>
+          Build your listening queue in seconds, then drag tracks to set the perfect
+          play order.
+        </p>
       </header>
 
       <section class="card">
-        <label for="urlInput">Soundgasm URLs (one per line)</label>
+        <label for="urlInput">Add Soundgasm URLs (one per line)</label>
         <textarea
           id="urlInput"
           rows="6"
           placeholder="https://soundgasm.net/user/track-name"
         ></textarea>
         <div class="actions">
-          <button id="addBtn" type="button">Add</button>
-          <button id="playBtn" type="button">Play</button>
-          <button id="nextBtn" type="button">Next</button>
-          <button id="clearBtn" type="button">Clear</button>
+          <button id="addBtn" type="button">Add to queue</button>
         </div>
-        <p id="status" class="status" role="status">Ready.</p>
+        <p id="status" class="status" role="status">Ready when you are.</p>
       </section>
 
       <section class="card">
-        <h2>Queue</h2>
+        <div class="queue-header">
+          <h2>Queue</h2>
+          <p class="queue-hint">Tip: drag and drop tracks to reorder your queue.</p>
+        </div>
+        <div class="queue-controls actions">
+          <button id="playBtn" type="button">Play queue</button>
+          <button id="nextBtn" type="button">Skip to next</button>
+          <button id="clearQueueBtn" type="button" class="button--danger">
+            Clear queue
+          </button>
+        </div>
         <ul id="queueList" class="queue"></ul>
       </section>
 
       <section class="card">
         <h2>Player</h2>
         <audio id="audio" controls preload="none"></audio>
-        <p id="nowPlaying" class="now-playing">Nothing playing.</p>
+        <p id="nowPlaying" class="now-playing">Nothing playing yet.</p>
       </section>
     </main>
 

@@ -5,7 +5,7 @@ const urlInput = document.getElementById("urlInput");
 const addBtn = document.getElementById("addBtn");
 const playBtn = document.getElementById("playBtn");
 const nextBtn = document.getElementById("nextBtn");
-const clearBtn = document.getElementById("clearBtn");
+const clearQueueBtn = document.getElementById("clearQueueBtn");
 const queueList = document.getElementById("queueList");
 const statusEl = document.getElementById("status");
 const audioEl = document.getElementById("audio");
@@ -13,6 +13,7 @@ const nowPlayingEl = document.getElementById("nowPlaying");
 
 let queue = [];
 let currentIndex = -1;
+let draggedIndex = null;
 
 const isDirectAudio = (url) => /\.(mp3|m4a|ogg)(\?.*)?$/i.test(url);
 
@@ -47,13 +48,35 @@ const loadState = () => {
   }
 };
 
+const moveTrack = (fromIndex, toIndex) => {
+  if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) {
+    return;
+  }
+
+  const [movedItem] = queue.splice(fromIndex, 1);
+  queue.splice(toIndex, 0, movedItem);
+
+  if (currentIndex === fromIndex) {
+    currentIndex = toIndex;
+  } else if (fromIndex < currentIndex && toIndex >= currentIndex) {
+    currentIndex -= 1;
+  } else if (fromIndex > currentIndex && toIndex <= currentIndex) {
+    currentIndex += 1;
+  }
+
+  renderQueue();
+  updateNowPlaying();
+  saveState();
+  setStatus(`Moved \"${movedItem.title || movedItem.pageUrl}\".`, "success");
+};
+
 const renderQueue = () => {
   queueList.innerHTML = "";
 
   if (queue.length === 0) {
     const emptyItem = document.createElement("li");
-    emptyItem.textContent = "Queue is empty.";
-    emptyItem.className = "queue__item";
+    emptyItem.textContent = "Your queue is empty. Add a few tracks to get started.";
+    emptyItem.className = "queue__item queue__item--empty";
     queueList.appendChild(emptyItem);
     return;
   }
@@ -61,6 +84,43 @@ const renderQueue = () => {
   queue.forEach((item, index) => {
     const li = document.createElement("li");
     li.className = "queue__item";
+    li.draggable = true;
+    li.dataset.index = String(index);
+
+    li.addEventListener("dragstart", (event) => {
+      draggedIndex = index;
+      li.classList.add("queue__item--dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(index));
+    });
+
+    li.addEventListener("dragend", () => {
+      draggedIndex = null;
+      li.classList.remove("queue__item--dragging");
+      queueList
+        .querySelectorAll(".queue__item--drag-over")
+        .forEach((entry) => entry.classList.remove("queue__item--drag-over"));
+    });
+
+    li.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      if (draggedIndex === index) {
+        return;
+      }
+      li.classList.add("queue__item--drag-over");
+      event.dataTransfer.dropEffect = "move";
+    });
+
+    li.addEventListener("dragleave", () => {
+      li.classList.remove("queue__item--drag-over");
+    });
+
+    li.addEventListener("drop", (event) => {
+      event.preventDefault();
+      li.classList.remove("queue__item--drag-over");
+      const fromIndex = draggedIndex ?? Number(event.dataTransfer.getData("text/plain"));
+      moveTrack(fromIndex, index);
+    });
 
     const meta = document.createElement("div");
     meta.className = "queue__meta";
@@ -73,20 +133,26 @@ const renderQueue = () => {
     url.className = "queue__url";
     url.textContent = item.pageUrl;
 
+    const dragHint = document.createElement("div");
+    dragHint.className = "queue__drag-hint";
+    dragHint.textContent = "Drag to reorder";
+
     meta.appendChild(title);
     meta.appendChild(url);
+    meta.appendChild(dragHint);
 
     const actions = document.createElement("div");
     actions.className = "queue__actions";
 
     const playButton = document.createElement("button");
     playButton.type = "button";
-    playButton.textContent = "Play";
+    playButton.textContent = "Play now";
     playButton.addEventListener("click", () => playAtIndex(index));
 
     const removeButton = document.createElement("button");
     removeButton.type = "button";
     removeButton.textContent = "Remove";
+    removeButton.className = "button--danger";
     removeButton.addEventListener("click", () => removeAtIndex(index));
 
     actions.appendChild(playButton);
@@ -102,10 +168,10 @@ const renderQueue = () => {
 const updateNowPlaying = () => {
   if (currentIndex >= 0 && queue[currentIndex]) {
     const current = queue[currentIndex];
-    nowPlayingEl.textContent = `Playing: ${current.title || current.pageUrl}`;
+    nowPlayingEl.textContent = `Now playing: ${current.title || current.pageUrl}`;
     return;
   }
-  nowPlayingEl.textContent = "Nothing playing.";
+  nowPlayingEl.textContent = "Nothing playing yet.";
 };
 
 const playAtIndex = async (index) => {
@@ -122,7 +188,7 @@ const playAtIndex = async (index) => {
     await audioEl.play();
     setStatus(`Playing ${track.title || track.pageUrl}`, "success");
   } catch (error) {
-    setStatus("Unable to start playback. Check browser autoplay settings.", "error");
+    setStatus("Playback was blocked. Press play in the player controls to continue.", "error");
     console.error("Playback failed", error);
   }
 };
@@ -134,6 +200,7 @@ const playNext = () => {
     currentIndex = -1;
     updateNowPlaying();
     saveState();
+    setStatus("Queue is empty.", "info");
     return;
   }
 
@@ -144,7 +211,7 @@ const playNext = () => {
     currentIndex = -1;
     updateNowPlaying();
     saveState();
-    setStatus("Reached end of queue.", "info");
+    setStatus("You've reached the end of the queue.", "info");
     return;
   }
 
@@ -166,12 +233,24 @@ const removeAtIndex = (index) => {
   saveState();
 };
 
+const clearQueue = () => {
+  queue = [];
+  currentIndex = -1;
+  audioEl.pause();
+  audioEl.removeAttribute("src");
+  audioEl.load();
+  renderQueue();
+  updateNowPlaying();
+  saveState();
+  setStatus("Queue cleared.", "info");
+};
+
 const addUrls = async () => {
   const lines = urlInput.value.split("\n");
   const urls = lines.map((line) => line.trim()).filter(Boolean);
 
   if (urls.length === 0) {
-    setStatus("Paste at least one Soundgasm URL.", "error");
+    setStatus("Paste at least one Soundgasm URL to add tracks.", "error");
     return;
   }
 
@@ -179,11 +258,11 @@ const addUrls = async () => {
   const uniqueUrls = urls.filter((url) => !existingUrls.has(url));
 
   if (uniqueUrls.length === 0) {
-    setStatus("All URLs are already in the queue.", "info");
+    setStatus("Those URLs are already in your queue.", "info");
     return;
   }
 
-  setStatus("Resolving URLs...", "info");
+  setStatus("Adding tracks to your queue...", "info");
 
   const results = [];
   for (const pageUrl of uniqueUrls) {
@@ -197,12 +276,12 @@ const addUrls = async () => {
         `${RESOLVER_BASE}/resolve?url=${encodeURIComponent(pageUrl)}`
       );
       if (!response.ok) {
-        setStatus(`Resolver failed for ${pageUrl}`, "error");
+        setStatus(`Could not resolve ${pageUrl}.`, "error");
         continue;
       }
       const data = await response.json();
       if (!data.audioUrl) {
-        setStatus(`Resolver returned no audio URL for ${pageUrl}`, "error");
+        setStatus(`No audio URL found for ${pageUrl}.`, "error");
         continue;
       }
       results.push({
@@ -212,7 +291,7 @@ const addUrls = async () => {
       });
     } catch (error) {
       console.error("Resolver error", error);
-      setStatus(`Resolver error for ${pageUrl}`, "error");
+      setStatus(`Resolver error for ${pageUrl}.`, "error");
     }
   }
 
@@ -221,12 +300,17 @@ const addUrls = async () => {
   saveState();
 
   if (results.length > 0) {
-    setStatus(`Added ${results.length} item(s) to the queue.`, "success");
+    setStatus(`Added ${results.length} track(s) to your queue.`, "success");
   }
 };
 
 addBtn.addEventListener("click", addUrls);
 playBtn.addEventListener("click", () => {
+  if (queue.length === 0) {
+    setStatus("Your queue is empty. Add tracks first.", "info");
+    return;
+  }
+
   if (currentIndex === -1) {
     playAtIndex(0);
   } else {
@@ -237,17 +321,7 @@ playBtn.addEventListener("click", () => {
   }
 });
 nextBtn.addEventListener("click", playNext);
-clearBtn.addEventListener("click", () => {
-  queue = [];
-  currentIndex = -1;
-  audioEl.pause();
-  audioEl.removeAttribute("src");
-  audioEl.load();
-  renderQueue();
-  updateNowPlaying();
-  saveState();
-  setStatus("Queue cleared.", "info");
-});
+clearQueueBtn.addEventListener("click", clearQueue);
 
 audioEl.addEventListener("ended", playNext);
 
