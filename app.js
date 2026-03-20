@@ -78,17 +78,25 @@ const loadState = () => {
 
 /* ── COLLAPSIBLE ADD PANEL ──────────────────────────── */
 let addPanelOpen = true;
-addPanelBody.style.maxHeight = addPanelBody.scrollHeight + "px";
+addPanelBody.style.maxHeight = "none";
 addChevron.classList.add("is-open");
+
+addPanelBody.addEventListener("transitionend", e => {
+  if (e.propertyName === "max-height" && addPanelOpen) {
+    addPanelBody.style.maxHeight = "none";
+  }
+});
 
 addPanelToggle.addEventListener("click", () => {
   addPanelOpen = !addPanelOpen;
   if (addPanelOpen) {
-    addPanelBody.style.maxHeight = addPanelBody.scrollHeight + "px";
     addPanelBody.classList.remove("is-collapsed");
+    addPanelBody.style.maxHeight = addPanelBody.scrollHeight + "px";
     addChevron.classList.add("is-open");
   } else {
-    addPanelBody.style.maxHeight = addPanelBody.scrollHeight + "px";
+    if (addPanelBody.style.maxHeight === "none") {
+      addPanelBody.style.maxHeight = addPanelBody.scrollHeight + "px";
+    }
     requestAnimationFrame(() => {
       addPanelBody.style.maxHeight = "0";
       addPanelBody.classList.add("is-collapsed");
