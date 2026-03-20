@@ -1,140 +1,2243 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Soundgasm Player</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <!-- Ambient background orbs -->
-    <div class="bg-orb bg-orb--1"></div>
-    <div class="bg-orb bg-orb--2"></div>
-    <div class="bg-orb bg-orb--3"></div>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clarifind | Training that actually sticks</title>
+  <meta name="description" content="Learning design and digital training for small teams who need clarity, not complexity. Built by Dor Vadai." />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#0A0F1E" />
+  <link rel="canonical" href="https://www.clarifind.space/" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet" />
 
-    <main class="app">
+  <style>
+    /* ─── Reset & Variables ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --ink: #0A0F1E;
+      --ink-soft: #1a2235;
+      --paper: #F5F3EE;
+      --paper-warm: #EDE9E0;
+      --accent: #4AE3A0;
+      --accent2: #FF6B4A;
+      --accent3: #7C6AFF;
+      --gold: #F5C842;
+      --white: #ffffff;
+      --text-muted: #7A8598;
+      --border: rgba(10,15,30,0.1);
+      --f-display: 'Syne', sans-serif;
+      --f-body: 'DM Sans', sans-serif;
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    }
 
-      <!-- ── NOW PLAYING HERO ───────────────────────── -->
-      <section class="player-hero">
-        <div class="vinyl-stage">
-          <div class="vinyl-ring vinyl-ring--outer"></div>
-          <div class="vinyl" id="vinylDisc">
-            <div class="vinyl__label">
-              <div class="vinyl__label-inner" id="vinylLabel">
-                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="20" cy="20" r="18" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
-                  <path d="M16 14l10 6-10 6V14z" fill="rgba(255,255,255,0.6)"/>
-                </svg>
+    html { scroll-behavior: smooth; }
+    body.rtl { direction: rtl; }
+    body {
+      font-family: var(--f-body);
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.6;
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    /* ─── Custom Cursor ─────────────────────────────────────────── */
+    .cursor {
+      position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9999;
+      width: 12px; height: 12px; border-radius: 50%; background: var(--accent);
+      transform: translate(-50%, -50%);
+      transition: width 0.2s var(--ease-spring), height 0.2s var(--ease-spring), background 0.2s;
+      mix-blend-mode: multiply;
+    }
+    .cursor-ring {
+      position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9998;
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 1.5px solid var(--ink); opacity: 0.25;
+      transform: translate(-50%, -50%);
+      transition: transform 0.15s var(--ease-out), width 0.3s var(--ease-spring), height 0.3s var(--ease-spring), opacity 0.2s;
+    }
+    body:has(a:hover) .cursor, body:has(button:hover) .cursor { width: 20px; height: 20px; background: var(--accent2); }
+    body:has(a:hover) .cursor-ring, body:has(button:hover) .cursor-ring { width: 56px; height: 56px; opacity: 0.15; }
+
+    /* ─── XP / Progress Bar ─────────────────────────────────────── */
+    .xp-bar {
+      position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 1000;
+      background: rgba(0,0,0,0.05);
+    }
+    .xp-fill {
+      height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent3));
+      transition: width 0.4s var(--ease-out);
+      box-shadow: 0 0 12px var(--accent);
+    }
+
+    /* ─── Skip Link ─────────────────────────────────────────────── */
+    .skip-link {
+      position: absolute; top: -99px; left: 1rem; padding: 0.5rem 1rem;
+      background: var(--accent); color: var(--ink); font-weight: 700; border-radius: 4px; z-index: 9999;
+    }
+    .skip-link:focus { top: 1rem; }
+
+    /* ─── Navigation ────────────────────────────────────────────── */
+    .site-header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 1rem 0;
+      transition: background 0.3s, box-shadow 0.3s, padding 0.3s;
+    }
+    .site-header.scrolled {
+      background: rgba(245,243,238,0.92); backdrop-filter: blur(16px);
+      box-shadow: 0 1px 0 var(--border); padding: 0.65rem 0;
+    }
+    .site-header.menu-open {
+      background: var(--paper);
+      box-shadow: 0 1px 0 var(--border);
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+    .nav { display: flex; align-items: center; justify-content: space-between; gap: 2rem; }
+    .brand { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; }
+    .brand-logo { height: 34px; width: auto; }
+    .nav-links { display: flex; align-items: center; gap: 2rem; list-style: none; }
+    .nav-links a {
+      text-decoration: none; color: var(--ink); font-family: var(--f-display);
+      font-size: 0.875rem; font-weight: 500; letter-spacing: 0.02em;
+      position: relative; padding-bottom: 2px;
+    }
+    .nav-links a::after {
+      content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 1.5px;
+      background: var(--accent2); transition: width 0.25s var(--ease-out);
+    }
+    .nav-links a:hover::after { width: 100%; }
+    .btn-nav {
+      padding: 0.55rem 1.25rem; background: var(--ink); color: var(--white) !important;
+      border-radius: 100px; font-family: var(--f-display) !important; font-size: 0.8rem !important;
+      font-weight: 700 !important; letter-spacing: 0.04em; transition: background 0.2s, transform 0.2s var(--ease-spring);
+    }
+    .btn-nav:hover { background: var(--accent2) !important; transform: scale(1.04); }
+    .btn-nav::after { display: none !important; }
+    /* Hamburger toggle */
+    .menu-toggle {
+      display: none; background: none; border: none; cursor: none;
+      width: 40px; height: 40px; align-items: center; justify-content: center;
+      border-radius: 10px; transition: background 0.2s; flex-shrink: 0;
+    }
+    .menu-toggle:hover { background: rgba(10,15,30,0.06); }
+    .hamburger { width: 24px; height: 18px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+    .hamburger span {
+      display: block; height: 2px; border-radius: 2px; background: var(--ink);
+      transform-origin: center;
+
+    }
+    .hamburger span:nth-child(1) { width: 100%; }
+    .hamburger span:nth-child(2) { width: 70%; }
+    .hamburger span:nth-child(3) { width: 45%; }
+
+
+
+
+    /* Mobile menu overlay */
+    .mobile-menu {
+      position: fixed; inset: 0;
+      background: var(--paper);
+      z-index: 98; padding: 5.5rem 2rem 2.5rem;
+      flex-direction: column; gap: 0;
+      display: flex;
+      
+      pointer-events: none;
+      overflow-y: auto;
+    }
+    
+    .mobile-menu .menu-link {
+      font-family: var(--f-display); font-size: clamp(1.5rem, 6vw, 2rem); font-weight: 800;
+      color: var(--ink); text-decoration: none; letter-spacing: -0.02em;
+      padding: 0.7rem 0; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      transition: color 0.2s;
+    }
+    .mobile-menu .menu-link::after { content: "\2197"; font-size: 1.1rem; opacity: 0.25; transition: opacity 0.2s, transform 0.2s var(--ease-spring); }
+    .mobile-menu .menu-link:hover { color: var(--accent2); }
+    .mobile-menu .menu-link:hover::after { opacity: 1; transform: translate(4px, -4px); }
+    .mobile-menu .mobile-cta {
+      border-bottom: none !important; margin-top: 1.5rem;
+      font-size: 1rem !important; background: var(--ink); color: var(--white) !important;
+      padding: 0.85rem 1.5rem !important; border-radius: 100px; justify-content: center;
+    }
+    .mobile-menu .mobile-cta::after { display: none !important; }
+    .mobile-menu .mobile-cta:hover { background: var(--accent2) !important; }
+    
+    
+    
+    
+    
+
+    .mobile-lang {
+      margin-top: auto; padding-top: 1.5rem;
+      display: flex; gap: 0.75rem; align-items: center;
+      opacity: 0; transform: translateY(14px);
+      transition: opacity 0.35s var(--ease-out) 0.35s, transform 0.35s var(--ease-out) 0.35s;
+    }
+    
+    .mobile-lang > span { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); font-family: var(--f-display); }
+    .mobile-lang-btn {
+      padding: 0.4rem 0.85rem; border-radius: 100px; border: 1.5px solid var(--border);
+      background: none; font-family: var(--f-display); font-size: 0.8rem; font-weight: 700;
+      color: var(--ink); cursor: none; transition: all 0.2s var(--ease-spring);
+    }
+    .mobile-lang-btn.active { background: var(--ink); color: var(--white); border-color: var(--ink); }
+    .mobile-lang-btn:hover:not(.active) { border-color: var(--ink); }
+
+    /* Desktop lang toggle */
+    .lang-toggle {
+      display: flex; align-items: center; gap: 0.2rem;
+      background: rgba(10,15,30,0.06); border-radius: 100px; padding: 3px;
+    }
+    .lang-toggle-btn {
+      padding: 0.28rem 0.6rem; border-radius: 100px; border: none; background: none;
+      font-family: var(--f-display); font-size: 0.73rem; font-weight: 700; letter-spacing: 0.04em;
+      color: var(--text-muted); cursor: none; transition: all 0.2s var(--ease-spring);
+    }
+    .lang-toggle-btn.active { background: var(--white); color: var(--ink); box-shadow: 0 1px 4px rgba(10,15,30,0.12); }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .menu-toggle { display: flex; }
+    }
+
+    /* ─── Floating XP Badge ─────────────────────────────────────── */
+    .xp-badge {
+      position: fixed; bottom: 2rem; right: 2rem; z-index: 200;
+      background: var(--ink); color: var(--white);
+      border-radius: 100px; padding: 0.6rem 1.1rem;
+      font-family: var(--f-display); font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.06em; display: flex; align-items: center; gap: 0.5rem;
+      box-shadow: 0 8px 24px rgba(10,15,30,0.3);
+      transition: transform 0.3s var(--ease-spring);
+      
+    }
+    .xp-badge:hover { transform: scale(1.06); }
+    .xp-badge .star { font-size: 1rem;  display: inline-block; }
+    
+    
+
+    /* ─── Hero ──────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh; display: flex; align-items: center;
+      padding: 8rem 0 5rem; position: relative; overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+    }
+    .hero-blob {
+      position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.18;
+      
+    }
+    .hero-blob--a { width: 700px; height: 700px; background: var(--accent3); top: -200px; right: -200px;  }
+    .hero-blob--b { width: 500px; height: 500px; background: var(--accent); bottom: -100px; left: -100px;   }
+    
+
+    /* Grid lines background */
+    .hero-grid-bg {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(10,15,30,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(10,15,30,0.04) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse at center, rgba(0,0,0,0.4) 0%, transparent 70%);
+    }
+
+    .hero-inner {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center;
+      position: relative; z-index: 1;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(74,227,160,0.12); border: 1px solid rgba(74,227,160,0.3);
+      color: #1a8a5a; border-radius: 100px; padding: 0.35rem 0.9rem;
+      font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+    .hero-badge::before { content: '●'; font-size: 0.5rem;  }
+    
+
+    .hero h1 {
+      font-family: var(--f-display); font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 800;
+      line-height: 1.1; letter-spacing: -0.03em; color: var(--ink); margin-bottom: 1.5rem;
+    }
+    .hero h1 .highlight {
+      position: relative; color: var(--accent2); display: inline-block;
+    }
+    .hero h1 .highlight::after {
+      content: ''; position: absolute; bottom: -4px; left: 0; width: 100%; height: 3px;
+      background: var(--accent2); border-radius: 2px;
+      
+      transform-origin: left;
+    }
+    
+
+    .hero-lead {
+      font-size: 1.125rem; color: #3a4557; line-height: 1.7; margin-bottom: 2rem;
+      max-width: 480px;
+    }
+
+    .hero-checklist { list-style: none; margin-bottom: 2.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+    .hero-checklist li {
+      display: flex; align-items: center; gap: 0.65rem;
+      font-size: 0.95rem; color: var(--ink-soft); font-weight: 500;
+      
+      
+    }
+    
+    
+    
+    
+    .check-icon {
+      width: 22px; height: 22px; border-radius: 50%; background: var(--accent);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      font-size: 0.65rem; color: var(--ink); font-weight: 900;
+    }
+
+    .hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: var(--ink); color: var(--white);
+      padding: 0.85rem 1.75rem; border-radius: 100px;
+      font-family: var(--f-display); font-weight: 700; font-size: 0.9rem; letter-spacing: 0.03em;
+      text-decoration: none; border: none; cursor: none;
+      transition: all 0.25s var(--ease-spring);
+      box-shadow: 0 4px 16px rgba(10,15,30,0.2);
+    }
+    .btn-primary:hover { background: var(--accent2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255,107,74,0.35); }
+    .btn-primary .arrow { transition: transform 0.25s var(--ease-spring); }
+    .btn-primary:hover .arrow { transform: translate(3px, -3px); }
+
+    .btn-outline {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: transparent; color: var(--ink);
+      padding: 0.85rem 1.75rem; border-radius: 100px;
+      font-family: var(--f-display); font-weight: 600; font-size: 0.9rem;
+      text-decoration: none; border: 2px solid var(--border);
+      transition: all 0.25s var(--ease-spring); cursor: none;
+    }
+    .btn-outline:hover { border-color: var(--ink); background: var(--ink); color: var(--white); }
+
+    .hero-meta {
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .hero-portrait {
+      display: flex; align-items: center; gap: 0.65rem; font-size: 0.875rem; font-weight: 600;
+    }
+    .hero-portrait img {
+      width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+      border: 2px solid var(--accent);
+    }
+    .hero-trust { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* Hero Visual */
+    .hero-visual { position: relative; }
+    .hero-visual-card {
+      background: var(--white); border-radius: 24px;
+      box-shadow: 0 24px 64px rgba(10,15,30,0.12), 0 4px 16px rgba(10,15,30,0.06);
+      overflow: hidden; position: relative; will-change: transform;
+      
+    }
+    
+
+    .clarity-map {
+      padding: 2rem; background: var(--ink); border-radius: 20px; min-height: 340px;
+      position: relative; overflow: hidden;
+    }
+    .clarity-map-title {
+      font-family: var(--f-display); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 1.5rem;
+    }
+    .clarity-nodes {
+      display: flex; flex-direction: column; gap: 0.75rem;
+    }
+    .clarity-node {
+      display: flex; align-items: center; gap: 0.75rem;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px; padding: 0.65rem 0.9rem;
+      font-size: 0.82rem; color: rgba(255,255,255,0.7); font-weight: 500;
+      
+      
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .clarity-node:hover { background: rgba(255,255,255,0.1); border-color: rgba(74,227,160,0.3); }
+    .clarity-node:nth-child(1) {  }
+    .clarity-node:nth-child(2) {  }
+    .clarity-node:nth-child(3) {  }
+    .clarity-node:nth-child(4) {  }
+    
+    .node-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .node-dot--green { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .node-dot--orange { background: var(--accent2); }
+    .node-dot--purple { background: var(--accent3); }
+    .node-dot--gold { background: var(--gold); }
+    .node-label { flex: 1; }
+    .node-tag {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 0.15rem 0.5rem; border-radius: 100px;
+    }
+    .node-tag--done { background: rgba(74,227,160,0.15); color: var(--accent); }
+    .node-tag--wip { background: rgba(124,106,255,0.15); color: var(--accent3); }
+    .node-tag--new { background: rgba(255,107,74,0.15); color: var(--accent2); }
+
+    /* XP meter in card */
+    .xp-meter {
+      margin-top: 1.5rem; padding: 0.75rem; background: rgba(255,255,255,0.04);
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);
+    }
+    .xp-meter-label {
+      display: flex; justify-content: space-between;
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+      color: rgba(255,255,255,0.4); margin-bottom: 0.5rem;
+    }
+    .xp-meter-bar { height: 6px; background: rgba(255,255,255,0.08); border-radius: 100px; overflow: hidden; }
+    .xp-meter-fill {
+      height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent3));
+      border-radius: 100px; width: 0%;
+      
+      box-shadow: 0 0 8px var(--accent);
+    }
+    
+
+    /* Floating chips on hero */
+    .hero-chip {
+      position: absolute; background: var(--white); border-radius: 100px;
+      padding: 0.5rem 0.9rem; font-size: 0.75rem; font-weight: 700;
+      box-shadow: 0 8px 24px rgba(10,15,30,0.12);
+      display: flex; align-items: center; gap: 0.4rem;
+      
+      pointer-events: none;
+    }
+    .hero-chip--a { top: -20px; left: -30px;  }
+    .hero-chip--b { bottom: 30px; right: -20px;  }
+    
+    .chip-emoji { font-size: 1rem; }
+
+    /* ─── Section Shared ────────────────────────────────────────── */
+    .section { padding: 6rem 0; }
+    .section-heading { text-align: center; margin-bottom: 3.5rem; }
+    .eyebrow {
+      font-family: var(--f-display); font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--accent2); margin-bottom: 0.75rem;
+    }
+    h2 {
+      font-family: var(--f-display); font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+      font-weight: 800; line-height: 1.15; letter-spacing: -0.025em; color: var(--ink);
+      margin-bottom: 1rem;
+    }
+    .section-lead { font-size: 1.05rem; color: #4a5568; max-width: 560px; margin: 0 auto; line-height: 1.7; }
+
+    /* Reveal animations */
+    
+    
+    
+    
+    
+
+    /* ─── Services ──────────────────────────────────────────────── */
+    #services { background: var(--ink); }
+    #services .eyebrow { color: var(--accent); }
+    #services h2 { color: var(--white); }
+    #services .section-lead { color: rgba(255,255,255,0.55); }
+
+    .services-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    .service-card {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px; padding: 2rem; position: relative; overflow: hidden;
+      transition: border-color 0.3s, transform 0.3s var(--ease-spring), background 0.3s;
+      cursor: none;
+    }
+    .service-card::before {
+      content: ''; position: absolute; inset: 0; opacity: 0;
+      background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(74,227,160,0.08) 0%, transparent 60%);
+      transition: opacity 0.3s; pointer-events: none;
+    }
+    .service-card:hover { border-color: rgba(74,227,160,0.3); transform: translateY(-4px); background: rgba(255,255,255,0.07); }
+    .service-card:hover::before { opacity: 1; }
+
+    .service-icon {
+      width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center;
+      justify-content: center; font-size: 1.5rem; margin-bottom: 1.25rem;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .service-icon--green { background: rgba(74,227,160,0.12); }
+    .service-icon--purple { background: rgba(124,106,255,0.12); }
+    .service-icon--orange { background: rgba(255,107,74,0.12); }
+
+    .service-card h3 {
+      font-family: var(--f-display); font-size: 1.15rem; font-weight: 700;
+      color: var(--white); margin-bottom: 0.4rem;
+    }
+    .service-chip {
+      display: inline-block; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; padding: 0.2rem 0.65rem; border-radius: 100px; margin-bottom: 0.85rem;
+    }
+    .service-chip--green { background: rgba(74,227,160,0.12); color: var(--accent); }
+    .service-chip--purple { background: rgba(124,106,255,0.12); color: var(--accent3); }
+    .service-chip--orange { background: rgba(255,107,74,0.12); color: var(--accent2); }
+
+    .service-card p { font-size: 0.92rem; color: rgba(255,255,255,0.55); line-height: 1.6; margin-bottom: 1.25rem; }
+
+    .service-outcomes { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .service-outcomes li {
+      font-size: 0.85rem; color: rgba(255,255,255,0.65); display: flex; align-items: center; gap: 0.5rem;
+    }
+    .service-outcomes li::before { content: '→'; color: var(--accent); font-size: 0.75rem; flex-shrink: 0; }
+
+    .service-card-link {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-family: var(--f-display); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.04em;
+      text-decoration: none; color: var(--accent); transition: gap 0.2s var(--ease-spring);
+    }
+    .service-card-link:hover { gap: 0.7rem; }
+
+    /* ─── How It Works — Gamified Quest Map ─────────────────────── */
+    #how { background: var(--paper-warm); }
+    .quest-map { position: relative; max-width: 700px; margin: 0 auto; padding: 1rem 0; }
+    .quest-line {
+      position: absolute; left: 40px; top: 40px; bottom: 40px; width: 2px;
+      background: linear-gradient(to bottom, var(--accent), var(--accent3), var(--accent2));
+      border-radius: 2px;
+    }
+    .quest-line::after {
+      content: ''; position: absolute; inset: 0;
+      background: inherit; filter: blur(4px); opacity: 0.4;
+    }
+    .quest-step {
+      display: flex; gap: 1.5rem; align-items: flex-start; margin-bottom: 2.5rem;
+      position: relative; z-index: 1;
+    }
+    .quest-step:last-child { margin-bottom: 0; }
+    .quest-node {
+      width: 80px; height: 80px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.75rem; border: 3px solid var(--paper-warm);
+      box-shadow: 0 0 0 2px var(--accent), 0 8px 24px rgba(10,15,30,0.1);
+      background: var(--white); position: relative;
+      transition: transform 0.3s var(--ease-spring), box-shadow 0.3s;
+      cursor: none;
+    }
+    .quest-node:hover { transform: scale(1.1) rotate(-5deg); box-shadow: 0 0 0 4px var(--accent2), 0 12px 32px rgba(10,15,30,0.15); }
+    .quest-node--2 { box-shadow: 0 0 0 2px var(--accent3), 0 8px 24px rgba(10,15,30,0.1); }
+    .quest-node--3 { box-shadow: 0 0 0 2px var(--accent2), 0 8px 24px rgba(10,15,30,0.1); }
+    .quest-node--4 { box-shadow: 0 0 0 2px var(--gold), 0 8px 24px rgba(10,15,30,0.1); }
+    .quest-node-badge {
+      position: absolute; top: -6px; right: -6px;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--accent); color: var(--ink);
+      font-family: var(--f-display); font-size: 0.65rem; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid var(--paper-warm);
+    }
+    .quest-content { padding-top: 0.75rem; flex: 1; }
+    .quest-content h3 {
+      font-family: var(--f-display); font-size: 1.15rem; font-weight: 700;
+      color: var(--ink); margin-bottom: 0.4rem;
+    }
+    .quest-content p { font-size: 0.92rem; color: #4a5568; line-height: 1.65; }
+    .quest-xp {
+      display: inline-block; margin-top: 0.6rem;
+      font-family: var(--f-display); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--accent2);
+      background: rgba(255,107,74,0.1); padding: 0.2rem 0.55rem; border-radius: 100px;
+    }
+
+    /* ─── Examples / Portfolio ──────────────────────────────────── */
+    #examples { background: var(--paper); }
+    .examples-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.25rem;
+    }
+    .example-card {
+      border-radius: 16px; overflow: hidden; background: var(--white);
+      border: 1px solid var(--border); position: relative;
+      transition: transform 0.3s var(--ease-spring), box-shadow 0.3s;
+      cursor: none;
+    }
+    .example-card:hover { transform: translateY(-6px); box-shadow: 0 20px 48px rgba(10,15,30,0.12); }
+    .example-card-img {
+      width: 100%; height: 180px; object-fit: cover; display: block;
+      transition: transform 0.4s var(--ease-out);
+    }
+    .example-card:hover .example-card-img { transform: scale(1.04); }
+    .example-card-body { padding: 1.25rem; }
+    .example-tag {
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 0.2rem 0.6rem; border-radius: 100px; margin-bottom: 0.65rem; display: inline-block;
+      background: rgba(124,106,255,0.1); color: var(--accent3);
+    }
+    .example-card h3 {
+      font-family: var(--f-display); font-size: 1rem; font-weight: 700;
+      color: var(--ink); margin-bottom: 0.35rem;
+    }
+    .example-card p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.55; }
+
+    /* ─── Proof / Metrics ───────────────────────────────────────── */
+    #proof { background: var(--ink); }
+    #proof .eyebrow { color: var(--accent); }
+    #proof h2 { color: var(--white); }
+    #proof .section-lead { color: rgba(255,255,255,0.5); }
+
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 3rem; }
+    .metric-card {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 1.75rem; text-align: center;
+      transition: border-color 0.3s, transform 0.3s var(--ease-spring);
+    }
+    .metric-card:hover { border-color: rgba(74,227,160,0.3); transform: translateY(-4px); }
+    .metric-value {
+      font-family: var(--f-display); font-size: 2.5rem; font-weight: 800;
+      color: var(--white); line-height: 1; margin-bottom: 0.5rem;
+    }
+    .metric-value span { color: var(--accent); }
+    .metric-label { font-size: 0.85rem; color: rgba(255,255,255,0.5); line-height: 1.4; }
+    .metric-bar { height: 4px; background: rgba(255,255,255,0.07); border-radius: 100px; margin-top: 1rem; overflow: hidden; }
+    .metric-bar-fill {
+      height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent3));
+      border-radius: 100px; width: 0%; transition: width 1.5s var(--ease-out);
+    }
+
+    .testimonials-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; }
+    .testimonial {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 1.5rem;
+    }
+    .testimonial-quote { font-size: 0.95rem; color: rgba(255,255,255,0.75); line-height: 1.65; margin-bottom: 1rem; font-style: italic; }
+    .testimonial-quote::before { content: '"'; color: var(--accent); font-size: 1.5rem; font-family: var(--f-display); }
+    .testimonial-meta { font-size: 0.78rem; color: rgba(255,255,255,0.35); font-weight: 500; }
+
+    /* ─── About ─────────────────────────────────────────────────── */
+    #about { background: var(--paper); }
+    .about-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center;
+    }
+    .about-portrait-wrap {
+      position: relative;
+    }
+    .about-portrait {
+      width: 100%; border-radius: 24px; display: block; object-fit: cover;
+      aspect-ratio: 4/5; box-shadow: 24px 24px 0 var(--paper-warm);
+    }
+    .about-portrait-tag {
+      position: absolute; bottom: 2rem; left: -1.5rem;
+      background: var(--white); border-radius: 12px; padding: 0.75rem 1rem;
+      box-shadow: 0 8px 24px rgba(10,15,30,0.12);
+      font-size: 0.8rem; font-weight: 600;
+      border-left: 3px solid var(--accent);
+    }
+    .about-copy h2 { text-align: left; margin-bottom: 1.25rem; }
+    .about-copy p { font-size: 1rem; color: #4a5568; line-height: 1.75; margin-bottom: 1rem; }
+    .skills-pills { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.5rem; }
+    .skill-pill {
+      padding: 0.4rem 0.85rem; border-radius: 100px;
+      border: 1.5px solid var(--border);
+      font-size: 0.8rem; font-weight: 600; color: var(--ink);
+      transition: all 0.2s var(--ease-spring); cursor: none;
+    }
+    .skill-pill:hover { border-color: var(--accent2); background: rgba(255,107,74,0.06); transform: scale(1.04); }
+
+    /* ─── Pricing ───────────────────────────────────────────────── */
+    #pricing { background: var(--paper-warm); }
+    .pricing-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 800px; margin: 0 auto; }
+    .pricing-card {
+      background: var(--white); border-radius: 20px; padding: 2rem;
+      border: 1.5px solid var(--border);
+      transition: transform 0.3s var(--ease-spring), box-shadow 0.3s;
+    }
+    .pricing-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(10,15,30,0.08); }
+    .pricing-card--accent { background: var(--ink); border-color: var(--ink); }
+    .pricing-card--accent h3 { color: var(--white); }
+    .pricing-card--accent p { color: rgba(255,255,255,0.6); }
+    .pricing-card--accent li { color: rgba(255,255,255,0.7); }
+    .pricing-card h3 { font-family: var(--f-display); font-size: 1.2rem; font-weight: 700; color: var(--ink); margin-bottom: 0.75rem; }
+    .pricing-card--accent h3 { color: var(--white); }
+    .pricing-card p { font-size: 0.92rem; color: #4a5568; line-height: 1.65; margin-bottom: 1rem; }
+    .pricing-card ul { list-style: none; display: flex; flex-direction: column; gap: 0.55rem; }
+    .pricing-card li { font-size: 0.875rem; color: #4a5568; display: flex; align-items: flex-start; gap: 0.5rem; }
+    .pricing-card li::before { content: '✓'; color: var(--accent); font-weight: 900; flex-shrink: 0; margin-top: 1px; }
+
+    /* ─── Contact ───────────────────────────────────────────────── */
+    #contact { background: var(--ink); }
+    #contact h2 { color: var(--white); }
+    #contact .section-lead { color: rgba(255,255,255,0.5); }
+    .contact-inner { max-width: 640px; margin: 0 auto; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-full { grid-column: 1 / -1; }
+    .form-field { display: flex; flex-direction: column; gap: 0.4rem; }
+    .form-field label { font-family: var(--f-display); font-size: 0.8rem; font-weight: 700; letter-spacing: 0.04em; color: rgba(255,255,255,0.6); }
+    .form-field input, .form-field textarea, .form-field select {
+      background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.12);
+      border-radius: 12px; padding: 0.85rem 1rem;
+      color: var(--white); font-family: var(--f-body); font-size: 0.92rem;
+      transition: border-color 0.2s, background 0.2s; outline: none; resize: vertical;
+    }
+    .form-field input::placeholder, .form-field textarea::placeholder { color: rgba(255,255,255,0.25); }
+    .form-field input:focus, .form-field textarea:focus {
+      border-color: var(--accent); background: rgba(74,227,160,0.05);
+    }
+    .form-field textarea { min-height: 120px; }
+    .form-submit-wrap { margin-top: 1.5rem; display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+    .form-note { font-size: 0.8rem; color: rgba(255,255,255,0.35); }
+    .form-status { font-size: 0.85rem; font-weight: 600; padding: 0.75rem 1rem; border-radius: 10px; display: none; }
+    .form-status.success { background: rgba(74,227,160,0.12); color: var(--accent); display: block; }
+    .form-status.error { background: rgba(255,107,74,0.12); color: var(--accent2); display: block; }
+
+    /* ─── Footer ────────────────────────────────────────────────── */
+    .site-footer {
+      background: var(--ink); border-top: 1px solid rgba(255,255,255,0.06);
+      padding: 3rem 0 2rem;
+    }
+    .footer-inner { display: grid; grid-template-columns: 1fr auto auto; gap: 3rem; align-items: start; }
+    .footer-logo { height: 28px; width: auto; margin-bottom: 0.65rem; filter: brightness(0) invert(1); opacity: 0.7; }
+    .footer-tagline { font-size: 0.85rem; color: rgba(255,255,255,0.35); }
+    .footer-links { display: flex; flex-direction: column; gap: 0.5rem; }
+    .footer-links a { font-size: 0.85rem; color: rgba(255,255,255,0.45); text-decoration: none; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--white); }
+    .footer-copy { font-size: 0.8rem; color: rgba(255,255,255,0.25); padding-top: 0.25rem; }
+
+    /* ─── Floating CTA ──────────────────────────────────────────── */
+    .floating-cta {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--accent2); color: var(--white);
+      padding: 0.8rem 1.75rem; border-radius: 100px;
+      font-family: var(--f-display); font-weight: 700; font-size: 0.85rem; letter-spacing: 0.04em;
+      text-decoration: none; box-shadow: 0 8px 24px rgba(255,107,74,0.4);
+      opacity: 0; z-index: 190;
+    }
+    
+    .floating-cta:hover { background: var(--ink); box-shadow: 0 12px 32px rgba(10,15,30,0.3); }
+
+    /* ─── Responsive ────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .hero-inner { grid-template-columns: 1fr; text-align: center; }
+      .hero-checklist { align-items: center; }
+      .hero-actions { justify-content: center; }
+      .hero-meta { justify-content: center; }
+      .hero-lead { margin: 0 auto 2rem; }
+      .hero-visual { display: none; }
+      .about-grid { grid-template-columns: 1fr; }
+      .about-portrait-wrap { display: none; }
+      .pricing-grid { grid-template-columns: 1fr; }
+      .footer-inner { grid-template-columns: 1fr; gap: 1.5rem; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .section { padding: 4rem 0; }
+      .floating-cta { bottom: 1rem; font-size: 0.8rem; padding: 0.7rem 1.4rem; }
+      .xp-badge { display: none; }
+    }
+
+    /* ─── Particle canvas ───────────────────────────────────────── */
+    #particle-canvas {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+
+    /* ─── Scroll progress gamification ─────────────────────────── */
+    .level-toast {
+      position: fixed; top: 5rem; right: 1.5rem; z-index: 300;
+      background: var(--ink); color: var(--white);
+      padding: 0.75rem 1.25rem; border-radius: 14px;
+      font-family: var(--f-display); font-size: 0.82rem; font-weight: 700;
+      box-shadow: 0 8px 24px rgba(10,15,30,0.3);
+      transform: translateX(200%);
+      border-left: 3px solid var(--gold);
+    }
+    
+
+    /* ─── Mission section ───────────────────────────────────────── */
+    #mission {
+      background: var(--paper); padding: 5rem 0; text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .mission-marquee-wrap { overflow: hidden; padding: 1rem 0; margin: 2rem 0; }
+    .mission-marquee {
+      display: flex; gap: 2rem; white-space: nowrap;
+      
+    }
+    .mission-marquee span {
+      font-family: var(--f-display); font-size: 1rem; font-weight: 700;
+      color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .mission-marquee span.accent { color: var(--accent2); }
+    
+
+    /* ─── Gamification tooltip on hover ────────────────────────── */
+    [data-xp] { position: relative; }
+    /* Exclude service cards (they have overflow:hidden which clips the tooltip) */
+    [data-xp]:not(.service-card)::after {
+      content: '+' attr(data-xp) ' XP';
+      position: absolute; top: -28px; left: 50%; transform: translateX(-50%);
+      background: var(--gold); color: var(--ink);
+      font-family: var(--f-display); font-size: 0.65rem; font-weight: 900; letter-spacing: 0.06em;
+      padding: 0.2rem 0.5rem; border-radius: 100px;
+      opacity: 0; pointer-events: none; z-index: 10;
+      transition: opacity 0.2s, top 0.2s;
+      white-space: nowrap;
+    }
+    [data-xp]:not(.service-card):hover::after { opacity: 1; top: -34px; }
+
+    /* Screen reader only utility */
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+
+  </style>
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/TextPlugin.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/Flip.min.js"></script>
+</head>
+<body>
+  <div class="cursor" id="cursor"></div>
+  <div class="cursor-ring" id="cursorRing"></div>
+  <canvas id="particle-canvas"></canvas>
+
+  <div class="xp-bar"><div class="xp-fill" id="xpFill"></div></div>
+  <div class="level-toast" id="levelToast">🏆 Achievement unlocked!</div>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <!-- XP Badge -->
+  <div class="xp-badge" id="xpBadge">
+    <span class="star">✦</span>
+    <span id="xpText">0 XP</span>
+  </div>
+
+  <!-- Nav -->
+  <header class="site-header" id="header">
+    <div class="container nav">
+      <a class="brand" href="#top" aria-label="Clarifind home">
+        <img class="brand-logo" src="/assets/Clarifind logo 1.png" alt="Clarifind" loading="lazy" />
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#services" data-i18n-nav="nav.services">Services</a>
+        <a href="#how" data-i18n-nav="nav.how">How it works</a>
+        <a href="#examples" data-i18n-nav="nav.examples">Work</a>
+        <a href="#about" data-i18n-nav="nav.about">About</a>
+        <a class="btn-nav" href="#contact" data-i18n-nav="nav.cta">Get in touch</a>
+      </nav>
+      <!-- Desktop lang toggle -->
+      <div class="lang-toggle" id="desktopLangToggle">
+        <button class="lang-toggle-btn active" data-lang="en" id="desktopLangEn">EN</button>
+        <button class="lang-toggle-btn" data-lang="he" id="desktopLangHe">עב</button>
+      </div>
+      <button class="menu-toggle" type="button" id="menuToggle" aria-expanded="false" aria-controls="mobileMenu">
+        <span class="sr-only" id="menuToggleLabel">Open menu</span>
+        <div class="hamburger"><span></span><span></span><span></span></div>
+      </button>
+    </div>
+    <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
+      <a class="menu-link" href="#services" data-i18n-mob="nav.services">Services</a>
+      <a class="menu-link" href="#how" data-i18n-mob="nav.how">How it works</a>
+      <a class="menu-link" href="#examples" data-i18n-mob="nav.examples">Work</a>
+      <a class="menu-link" href="#about" data-i18n-mob="nav.about">About</a>
+      <a class="menu-link mobile-cta" href="#contact" data-i18n-mob="nav.cta">Get in touch</a>
+      <div class="mobile-lang">
+        <span data-i18n-mob="nav.languageLabel">Language</span>
+        <button class="mobile-lang-btn active" data-lang="en" id="mobileLangEn">EN</button>
+        <button class="mobile-lang-btn" data-lang="he" id="mobileLangHe">עברית</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+
+    <!-- ── Hero ──────────────────────────────────────────────── -->
+    <section class="hero" id="top">
+      <div class="hero-bg">
+        <div class="hero-blob hero-blob--a"></div>
+        <div class="hero-blob hero-blob--b"></div>
+        <div class="hero-grid-bg"></div>
+      </div>
+      <div class="container hero-inner">
+        <div class="hero-copy">
+          <div class="hero-badge reveal"><span id="hero-badge-text">Training & Learning Design</span></div>
+          <h1 class="reveal">
+            <span id="hero-h1a">Turn messy knowledge into</span><br>
+            <span class="highlight" id="hero-h1b">training that sticks.</span>
+          </h1>
+          <p class="hero-lead reveal" id="hero-lead-text">
+            I help small teams stop repeating themselves. You've got knowledge worth sharing — I'll shape it into clear, usable learning that people actually follow through on.
+          </p>
+          <ul class="hero-checklist">
+            <li><span class="check-icon">✓</span> <span id="hero-check1">15-min call, no pressure</span></li>
+            <li><span class="check-icon">✓</span> <span id="hero-check2">Clear scope before any work starts</span></li>
+            <li><span class="check-icon">✓</span> <span id="hero-check3">Built for real budgets and timelines</span></li>
+          </ul>
+          <div class="hero-actions reveal">
+            <a class="btn-primary" href="#contact" data-cta="hero-primary">
+              <span id="hero-cta-primary">Let's talk</span> <span class="arrow">↗</span>
+            </a>
+            <a class="btn-outline" href="#examples" id="hero-cta-secondary">See the work</a>
+          </div>
+          <div class="hero-meta reveal">
+            <div class="hero-portrait">
+              <img src="/assets/Profile 2.jpg" alt="Dor Vadai" loading="lazy" />
+              <div>
+                <div style="font-family:var(--f-display);font-weight:700;font-size:0.85rem;">Dor Vadai</div>
+                <div class="hero-trust" id="hero-name-label">Learning designer & UX strategist</div>
               </div>
             </div>
-            <div class="vinyl__progress" id="vinylProgress"></div>
           </div>
-          <div class="vinyl-ring vinyl-ring--inner"></div>
         </div>
 
-        <div class="player-info">
-          <div class="player-info__track">
-            <p class="player-info__label">NOW PLAYING</p>
-            <h1 class="player-info__title" id="nowPlayingTitle">—</h1>
-            <p class="player-info__sub" id="nowPlayingUrl">Add tracks to get started</p>
-          </div>
-
-          <div class="player-controls">
-            <button class="ctrl-btn ctrl-btn--icon" id="shuffleBtn" title="Shuffle" aria-label="Shuffle">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
-                <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
-              </svg>
-            </button>
-            <button class="ctrl-btn ctrl-btn--icon" id="prevBtn" title="Previous" aria-label="Previous">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
-            </button>
-            <button class="ctrl-btn ctrl-btn--play" id="playBtn" aria-label="Play/Pause">
-              <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-              <svg class="pause-icon" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-            </button>
-            <button class="ctrl-btn ctrl-btn--icon" id="nextBtn" title="Next" aria-label="Next">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm2.5-6 5.5 3.9V8.1L8.5 12zM16 6h2v12h-2z"/></svg>
-            </button>
-            <button class="ctrl-btn ctrl-btn--icon" id="repeatBtn" title="Repeat" aria-label="Repeat">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
-                <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
-              </svg>
-            </button>
-          </div>
-
-          <!-- Seek bar -->
-          <div class="seek-row">
-            <span class="seek-time" id="currentTime">0:00</span>
-            <div class="seek-bar" id="seekBar">
-              <div class="seek-bar__fill" id="seekFill"></div>
-              <div class="seek-bar__thumb" id="seekThumb"></div>
+        <div class="hero-visual reveal reveal-delay-2">
+          <div class="hero-chip hero-chip--a"><span class="chip-emoji">🧠</span> UX + Learning Design</div>
+          <div class="hero-visual-card">
+            <div class="clarity-map">
+              <p class="clarity-map-title" id="card-title">Your learning roadmap</p>
+              <div class="clarity-nodes">
+                <div class="clarity-node" data-xp="10">
+                  <span class="node-dot node-dot--green"></span>
+                  <span class="node-label" id="node1-label">Discovery call</span>
+                  <span class="node-tag node-tag--done" id="node1-tag">Done</span>
+                </div>
+                <div class="clarity-node" data-xp="15">
+                  <span class="node-dot node-dot--purple"></span>
+                  <span class="node-label" id="node2-label">Content structure & map</span>
+                  <span class="node-tag node-tag--wip" id="node2-tag">In progress</span>
+                </div>
+                <div class="clarity-node" data-xp="20">
+                  <span class="node-dot node-dot--orange"></span>
+                  <span class="node-label" id="node3-label">Module design & writing</span>
+                  <span class="node-tag node-tag--new" id="node3-tag">Up next</span>
+                </div>
+                <div class="clarity-node" data-xp="25">
+                  <span class="node-dot node-dot--gold"></span>
+                  <span class="node-label" id="node4-label">Launch-ready delivery</span>
+                  <span class="node-tag node-tag--new" id="node4-tag">Up next</span>
+                </div>
+              </div>
+              <div class="xp-meter">
+                <div class="xp-meter-label"><span id="xp-meter-label-text">Clarity progress</span><span>68%</span></div>
+                <div class="xp-meter-bar"><div class="xp-meter-fill"></div></div>
+              </div>
             </div>
-            <span class="seek-time" id="totalTime">0:00</span>
           </div>
-
-          <!-- Status message -->
-          <p id="status" class="status-msg" role="status"></p>
+          <div class="hero-chip hero-chip--b"><span class="chip-emoji">🎯</span> Clarity-first approach</div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- ── ADD TRACKS ─────────────────────────────── -->
-      <section class="panel panel--add" id="addPanel">
-        <div class="panel__header" id="addPanelToggle">
-          <div class="panel__title-row">
-            <span class="panel__icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
-              </svg>
-            </span>
-            <h2 class="panel__title">Add Tracks</h2>
+    <!-- ── Mission marquee ────────────────────────────────── -->
+    <section id="mission">
+      <div class="container">
+        <p class="eyebrow" id="mission-eyebrow">What I believe</p>
+        <h2 style="max-width:640px;margin:0 auto 1rem;" id="mission-h2">Good training doesn't just inform — it changes what people do.</h2>
+        <p class="section-lead" id="mission-lead">Most training fails because it was built to check a box, not to be used. I build learning that earns attention and guides real behavior.</p>
+      </div>
+      <div class="mission-marquee-wrap">
+        <div class="mission-marquee">
+          <span>Clarity over complexity</span><span class="accent">✦</span>
+          <span>Structure over volume</span><span class="accent">✦</span>
+          <span>Usability over completion rates</span><span class="accent">✦</span>
+          <span>Humans first, tools second</span><span class="accent">✦</span>
+          <span>Learning that earns attention</span><span class="accent">✦</span>
+          <span>Practical over perfect</span><span class="accent">✦</span>
+          <!-- dupe for seamless loop -->
+          <span>Clarity over complexity</span><span class="accent">✦</span>
+          <span>Structure over volume</span><span class="accent">✦</span>
+          <span>Usability over completion rates</span><span class="accent">✦</span>
+          <span>Humans first, tools second</span><span class="accent">✦</span>
+          <span>Learning that earns attention</span><span class="accent">✦</span>
+          <span>Practical over perfect</span><span class="accent">✦</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Services ───────────────────────────────────────── -->
+    <section class="section" id="services">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="eyebrow" id="services-eyebrow">What I do</p>
+          <h2 id="services-h2">The right help for where you're stuck.</h2>
+          <p class="section-lead" id="services-lead">I don't do everything. I do a few things really well — structure, content, and the kind of design that makes learning feel effortless.</p>
+        </div>
+        <div class="services-grid">
+          <article class="service-card reveal" data-xp="30">
+            <div class="service-icon service-icon--green">📚</div>
+            <h3 id="s1-title">Learning Products</h3>
+            <span class="service-chip service-chip--green" id="s1-chip">Faster onboarding</span>
+            <p id="s1-body">Courses, onboarding flows, and knowledge hubs that turn scattered information into something people can actually follow.</p>
+            <ul class="service-outcomes">
+              <li id="s1-o1">New hires get up to speed without hand-holding</li>
+              <li id="s1-o2">Fewer repeat questions, less wheel-reinventing</li>
+              <li id="s1-o3">Knowledge that travels with the team</li>
+            </ul>
+            <a class="service-card-link" href="/services/learning-products.html"><span id="s1-link">Explore this service</span> →</a>
+          </article>
+          <article class="service-card reveal reveal-delay-1" data-xp="30">
+            <div class="service-icon service-icon--purple">🎯</div>
+            <h3 id="s2-title">Workshops & Facilitation</h3>
+            <span class="service-chip service-chip--purple" id="s2-chip">Aligned teams</span>
+            <p id="s2-body">Live sessions that move your team from "we kind of know this" to "we all know exactly what we're doing." Built for actual momentum, not just slides.</p>
+            <ul class="service-outcomes">
+              <li id="s2-o1">Shared understanding without overload</li>
+              <li id="s2-o2">Concrete outputs your team will actually use</li>
+              <li id="s2-o3">Better adoption, less resistance to change</li>
+            </ul>
+            <a class="service-card-link" href="/services/workshops-facilitation.html"><span id="s2-link">Explore this service</span> →</a>
+          </article>
+          <article class="service-card reveal reveal-delay-2" data-xp="30">
+            <div class="service-icon service-icon--orange">🤖</div>
+            <h3 id="s3-title">AI-Assisted Learning Tools</h3>
+            <span class="service-chip service-chip--orange" id="s3-chip">Scale without noise</span>
+            <p id="s3-body">Smart tools — chatbots, simulations, interactive exercises — that give your team answers when they need them, without a person in the loop every time.</p>
+            <ul class="service-outcomes">
+              <li id="s3-o1">Always-available answers grounded in your content</li>
+              <li id="s3-o2">Practice and feedback without the bottleneck</li>
+              <li id="s3-o3">Scales with your team as you grow</li>
+            </ul>
+            <a class="service-card-link" href="/services/ai-assisted-learning-tools.html"><span id="s3-link">Explore this service</span> →</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── How It Works ───────────────────────────────────── -->
+    <section class="section" id="how">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="eyebrow" id="how-eyebrow">The process</p>
+          <h2 id="how-h2">From fuzzy to finished — in four moves.</h2>
+          <p class="section-lead" id="how-lead">I like simple, honest processes. No 12-phase methodology, no jargon-heavy decks. Just a clear path from your goal to a working solution.</p>
+        </div>
+        <div class="quest-map reveal">
+          <div class="quest-line"></div>
+          <div class="quest-step">
+            <div class="quest-node quest-node--1" data-xp="10">🔍
+              <div class="quest-node-badge">1</div>
+            </div>
+            <div class="quest-content">
+              <h3 id="step1-title">Clarity call</h3>
+              <p id="step1-body">15 minutes to hear what's going on, what you need, and whether I'm the right fit. No pitch, no pressure — just an honest look at the situation.</p>
+              <span class="quest-xp" id="step1-xp">+10 XP · 15 min</span>
+            </div>
           </div>
-          <span class="panel__chevron" id="addChevron">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </span>
-        </div>
-        <div class="panel__body" id="addPanelBody">
-          <label class="field-label" for="urlInput">Soundgasm URLs — one per line</label>
-          <textarea
-            id="urlInput"
-            rows="4"
-            placeholder="https://soundgasm.net/user/track-name&#10;https://soundgasm.net/user/another-track"
-          ></textarea>
-          <div class="row-actions">
-            <button class="btn btn--primary" id="addBtn" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Add to Queue
-            </button>
+          <div class="quest-step">
+            <div class="quest-node quest-node--2" data-xp="20">🗺️
+              <div class="quest-node-badge" style="background:var(--accent3)">2</div>
+            </div>
+            <div class="quest-content">
+              <h3 id="step2-title">Diagnose & scope</h3>
+              <p id="step2-body">I map out the learning challenge, identify what's missing, and lay out a realistic scope — so you know exactly what you're signing up for before anything starts.</p>
+              <span class="quest-xp" style="color:var(--accent3);background:rgba(124,106,255,0.1)" id="step2-xp">+20 XP · 3–5 days</span>
+            </div>
+          </div>
+          <div class="quest-step">
+            <div class="quest-node quest-node--3" data-xp="40">⚒️
+              <div class="quest-node-badge" style="background:var(--accent2)">3</div>
+            </div>
+            <div class="quest-content">
+              <h3 id="step3-title">Design & build</h3>
+              <p id="step3-body">I design the structure, write the content, and build the learning experience — always checking in so nothing surprises you at the end.</p>
+              <span class="quest-xp" style="color:var(--accent2);background:rgba(255,107,74,0.1)" id="step3-xp">+40 XP · 2–6 weeks</span>
+            </div>
+          </div>
+          <div class="quest-step">
+            <div class="quest-node quest-node--4" data-xp="30">🏆
+              <div class="quest-node-badge" style="background:var(--gold);color:var(--ink)">4</div>
+            </div>
+            <div class="quest-content">
+              <h3 id="step4-title">Launch & hand off</h3>
+              <p id="step4-body">You get everything ready to use — tested, documented, and explained. I stick around to help you launch smoothly and answer anything that comes up.</p>
+              <span class="quest-xp" style="color:var(--gold);background:rgba(245,200,66,0.12)" id="step4-xp">+30 XP · Launch day 🚀</span>
+            </div>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <!-- ── QUEUE ──────────────────────────────────── -->
-      <section class="panel panel--queue">
-        <div class="panel__header">
-          <div class="panel__title-row">
-            <span class="panel__icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
-                <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-              </svg>
-            </span>
-            <h2 class="panel__title">Queue <span class="queue-count" id="queueCount">0</span></h2>
+    <!-- ── Examples ───────────────────────────────────────── -->
+    <section class="section" id="examples">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="eyebrow" id="examples-eyebrow">Selected work</p>
+          <h2 id="examples-h2">Projects that went from unclear to undeniable.</h2>
+          <p class="section-lead" id="examples-lead">Real work for real teams. Each project started with a messy problem and ended with something usable.</p>
+        </div>
+        <div class="examples-grid">
+          <article class="example-card reveal" data-xp="15">
+            <img class="example-card-img" src="/assets/Facilitation 1.jpg" alt="Facilitation workshop" loading="lazy" />
+            <div class="example-card-body">
+              <span class="example-tag">Workshop</span>
+              <h3 id="p1-title">Aliyah Course Facilitation</h3>
+              <p id="p1-body">A full facilitation system — guides, activities, and pacing frameworks — built for emissaries running live learning sessions.</p>
+            </div>
+          </article>
+          <article class="example-card reveal reveal-delay-1" data-xp="15">
+            <img class="example-card-img" src="/assets/Gamification 2.png" alt="Gamification design" loading="lazy" />
+            <div class="example-card-body">
+              <span class="example-tag" style="background:rgba(255,107,74,0.1);color:var(--accent2)">Gamification</span>
+              <h3 id="p2-title">Gamified Knowledge Checks</h3>
+              <p id="p2-body">Interactive assessments designed to feel like a game — complete with progress tracking, instant feedback, and earned rewards.</p>
+            </div>
+          </article>
+          <article class="example-card reveal reveal-delay-2" data-xp="15">
+            <img class="example-card-img" src="/assets/Digital module.gif" alt="Digital learning module" loading="lazy" />
+            <div class="example-card-body">
+              <span class="example-tag" style="background:rgba(74,227,160,0.1);color:#1a8a5a">Digital Module</span>
+              <h3 id="p3-title">JAFI AI Training Partner</h3>
+              <p id="p3-body">A conversational AI practice tool for emissaries, trained on real scenarios so they can rehearse sensitive conversations before they happen.</p>
+            </div>
+          </article>
+          <article class="example-card reveal" data-xp="15">
+            <img class="example-card-img" src="/assets/Booklet 2.jpg" alt="Learning booklet" loading="lazy" />
+            <div class="example-card-body">
+              <span class="example-tag" style="background:rgba(245,200,66,0.12);color:#a07d00">Print + Digital</span>
+              <h3 id="p4-title">Noya's Bears Story Booklets</h3>
+              <p id="p4-body">A bilingual story-based learning kit that brought emotional topics to life for young learners — beautifully illustrated and pedagogically grounded.</p>
+            </div>
+          </article>
+          <article class="example-card reveal reveal-delay-1" data-xp="15">
+            <img class="example-card-img" src="/assets/Tablet app.png" alt="Learning platform" loading="lazy" />
+            <div class="example-card-body">
+              <span class="example-tag" style="background:rgba(124,106,255,0.1);color:var(--accent3)">Platform</span>
+              <h3 id="p5-title">Aliyah Learning Platform</h3>
+              <p id="p5-body">End-to-end platform design and content architecture for a distributed learning system used across 40+ global communities.</p>
+            </div>
+          </article>
+          <article class="example-card reveal reveal-delay-2" data-xp="15">
+            <img class="example-card-img" src="/assets/Cogwheels.png" alt="Operations dashboard" loading="lazy" />
+            <div class="example-card-body">
+              <span class="example-tag" style="background:rgba(255,107,74,0.1);color:var(--accent2)">Dashboard</span>
+              <h3 id="p6-title">Operations Dashboard</h3>
+              <p id="p6-body">A practical internal tool for tracking and reporting on training activity — built to reduce reporting friction and surface the right data fast.</p>
+            </div>
+          </article>
+        </div>
+        <div style="text-align:center;margin-top:2.5rem;" class="reveal">
+          <a class="btn-outline" href="/projects/index.html" style="color:var(--ink);border-color:var(--border);"><span id="examples-viewall">View all projects</span> →</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Proof / Metrics ────────────────────────────────── -->
+    <section class="section" id="proof">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="eyebrow" id="proof-eyebrow">Results</p>
+          <h2 id="proof-h2">Numbers that make sense, not just big ones.</h2>
+          <p class="section-lead" id="proof-lead">I'll share references when we talk. These are the kinds of outcomes these projects are built to deliver.</p>
+        </div>
+        <div class="metrics-grid reveal" id="metricsGrid">
+          <div class="metric-card">
+            <div class="metric-value"><span class="count" data-target="40">0</span>%</div>
+            <div class="metric-label" id="m1-label">Shorter onboarding ramp time</div>
+            <div class="metric-bar"><div class="metric-bar-fill" style="--w:70%"></div></div>
           </div>
-          <button class="btn btn--ghost btn--sm" id="clearQueueBtn" type="button">Clear all</button>
+          <div class="metric-card reveal-delay-1">
+            <div class="metric-value"><span class="count" data-target="2">0</span>×</div>
+            <div class="metric-label" id="m2-label">Faster access to trusted answers</div>
+            <div class="metric-bar"><div class="metric-bar-fill" style="--w:62%"></div></div>
+          </div>
+          <div class="metric-card reveal-delay-2">
+            <div class="metric-value"><span class="count" data-target="8">0</span>h</div>
+            <div class="metric-label" id="m3-label">Hours saved per team, per month</div>
+            <div class="metric-bar"><div class="metric-bar-fill" style="--w:58%"></div></div>
+          </div>
         </div>
-        <div class="panel__body panel__body--no-pad">
-          <ul id="queueList" class="queue-list"></ul>
+        <div class="testimonials-grid reveal">
+          <div class="testimonial">
+            <p class="testimonial-quote" id="t1-quote">The content finally feels calm and navigable. Our team found what they needed without asking for help.</p>
+            <p class="testimonial-meta" id="t1-meta">Ops lead, education nonprofit</p>
+          </div>
+          <div class="testimonial">
+            <p class="testimonial-quote" id="t2-quote">We went from confusing onboarding to a clear 4-week path. New hires are productive way sooner.</p>
+            <p class="testimonial-meta" id="t2-meta">People partner, SaaS startup</p>
+          </div>
+          <div class="testimonial">
+            <p class="testimonial-quote" id="t3-quote">Shorter training, better retention, less rework. The clarity made all the difference.</p>
+            <p class="testimonial-meta" id="t3-meta">Program manager, public sector</p>
+          </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-    </main>
+    <!-- ── About ──────────────────────────────────────────── -->
+    <section class="section" id="about">
+      <div class="container">
+        <div class="about-grid">
+          <div class="about-portrait-wrap reveal">
+            <img class="about-portrait" src="/assets/My portrait.jpg" alt="Portrait of Dor Vadai" loading="lazy" />
+            <div class="about-portrait-tag">
+              <strong id="about-tag-name">Dor Vadai</strong><br>
+              <span id="about-tag-role">Learning Designer & UX Strategist</span>
+            </div>
+          </div>
+          <div class="about-copy reveal reveal-delay-1">
+            <p class="eyebrow" id="about-eyebrow">Who's behind this</p>
+            <h2 id="about-h2">Hi, I'm Dor.</h2>
+            <p id="about-p1">I'm a learning designer and UX strategist who's spent years figuring out why training fails — and building things that work instead. My background spans psychology, instructional design, and hands-on digital product work.</p>
+            <p id="about-p2">I've built learning programs, digital tools, and interactive experiences for educational organizations, nonprofits, and public institutions. Always under real constraints, for real users, with the goal of making complex things feel simple.</p>
+            <p id="about-p3">Clarifind is where I bring that practice to clients who want learning solutions that are thoughtful, honest about trade-offs, and built to actually be used — not just to look good in a proposal.</p>
+            <div class="skills-pills">
+              <span class="skill-pill">UX Design</span>
+              <span class="skill-pill">Learning Design</span>
+              <span class="skill-pill">Digital Training</span>
+              <span class="skill-pill">Content Strategy</span>
+              <span class="skill-pill">AI Tools</span>
+              <span class="skill-pill">Facilitation</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-    <audio id="audio" preload="none" style="display:none"></audio>
-    <script src="app.js" defer></script>
-  </body>
+    <!-- ── Pricing ─────────────────────────────────────────── -->
+    <section class="section" id="pricing">
+      <div class="container">
+        <div class="section-heading reveal">
+          <p class="eyebrow" id="pricing-eyebrow">Pricing</p>
+          <h2 id="pricing-h2">Sized for small teams, honest about cost.</h2>
+          <p class="section-lead" id="pricing-lead">You'll always know the scope and the cost before anything starts. No surprises, no scope creep ambushes.</p>
+        </div>
+        <div class="pricing-grid reveal">
+          <div class="pricing-card">
+            <h3 id="pc1-title">Small teams welcome</h3>
+            <p id="pc1-body">I specialize in projects that stay lean, focused, and realistic for busy teams with limited time and budget.</p>
+            <ul>
+              <li id="pc1-l1">Scaled scope options to fit your capacity</li>
+              <li id="pc1-l2">Collaborative planning, no surprise complexity</li>
+              <li id="pc1-l3">Flexible pacing for busy seasons</li>
+            </ul>
+          </div>
+          <div class="pricing-card pricing-card--accent">
+            <h3 id="pc2-title">Special consideration</h3>
+            <p id="pc2-body">Adjusted packages available for nonprofits, arts organizations, education, and social work. I care about the work more than the rate.</p>
+            <ul style="list-style:none;gap:0.55rem;display:flex;flex-direction:column;">
+              <li style="color:rgba(255,255,255,0.6);font-size:0.875rem;display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--accent);font-weight:900">✓</span><span id="pc2-l1">Share your context — I'll suggest something fair</span> — I'll suggest something fair</li>
+              <li style="color:rgba(255,255,255,0.6);font-size:0.875rem;display:flex;gap:0.5rem;align-items:flex-start;"><span style="color:var(--accent);font-weight:900">✓</span><span id="pc2-l2">No awkward negotiation, no hidden fees</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Contact ─────────────────────────────────────────── -->
+    <section class="section" id="contact">
+      <div class="container">
+        <div class="section-heading reveal">
+          <h2 id="contact-h2">Ready to make learning click?</h2>
+          <p class="section-lead" id="contact-lead">Tell me what's going on. I'll read it carefully and come back with a concrete suggestion — usually within two business days.</p>
+        </div>
+        <div class="contact-inner reveal">
+          <form id="contactForm" class="form-grid" action="https://formspree.io/f/mzdekkwp" method="post" novalidate>
+            <div class="form-field">
+              <label for="field-name-input" id="field-name-label">Your name</label>
+              <input id="field-name-input" type="text" name="name" placeholder="Jane Doe" autocomplete="name" required />
+            </div>
+            <div class="form-field">
+              <label for="field-email-input" id="field-email-label">Email address</label>
+              <input id="field-email-input" type="email" name="email" placeholder="you@company.com" autocomplete="email" required />
+            </div>
+            <div class="form-field">
+              <label for="field-org-input" id="field-org-label">Organization <span style="opacity:.4;font-weight:400">(optional)</span></label>
+              <input id="field-org-input" type="text" name="organization" placeholder="Your org or company" />
+            </div>
+            <div class="form-field">
+              <label for="field-service-input" id="field-service-label">What kind of help? <span style="opacity:.4;font-weight:400">(optional)</span></label>
+              <select id="field-service-input" name="service">
+                <option value="">Not sure yet</option>
+                <option>Learning products</option>
+                <option>Workshop or facilitation</option>
+                <option>AI-assisted tools</option>
+                <option>Something else</option>
+              </select>
+            </div>
+            <div class="form-field form-full">
+              <label for="field-msg-input" id="field-msg-label">What are you trying to solve?</label>
+              <textarea id="field-msg-input" name="message" rows="4" placeholder="Tell me about the situation — what's messy, who's involved, and what a win looks like for you." required></textarea>
+            </div>
+            <div class="form-submit-wrap form-full">
+              <button class="btn-primary" type="submit" id="submitBtn">
+                <span id="submit-btn-text">Send it over</span> <span class="arrow">↗</span>
+              </button>
+              <p class="form-note" id="form-note-text">I reply within 2 business days.</p>
+            </div>
+            <div class="form-status form-full" id="formStatus"></div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div>
+        <img class="footer-logo" src="/assets/Clarifind logo 1.png" alt="Clarifind" loading="lazy" />
+        <p class="footer-tagline" id="footer-tagline">Learning, made clear.</p>
+      </div>
+      <div class="footer-links">
+        <a href="mailto:Dor1612@gmail.com">Dor1612@gmail.com</a>
+        <a href="https://www.linkedin.com/in/dor-vadai-071102240/" target="_blank" rel="noopener">LinkedIn</a>
+        <a href="https://dorthepm.com/" target="_blank" rel="noopener">dorthepm.com</a>
+        <a href="/accessibility.html">Accessibility</a>
+      </div>
+      <div>
+        <p class="footer-copy">© <span id="year"></span> <span id="footer-copy-text">Clarifind. All rights reserved.</span></p>
+      </div>
+    </div>
+  </footer>
+
+  <a class="floating-cta" id="floatingCta" href="#contact"><span id="floating-cta-text">Let's work together</span> ↗</a>
+
+  <script>
+  // ── Register GSAP plugins ──────────────────────────────────────
+  gsap.registerPlugin(ScrollTrigger, TextPlugin, Flip);
+
+  // ── Year ──────────────────────────────────────────────────────
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // ── Custom Cursor ─────────────────────────────────────────────
+  const cursorDot  = document.getElementById('cursor');
+  const cursorRing = document.getElementById('cursorRing');
+  let mx = 0, my = 0;
+
+  document.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    gsap.to(cursorDot,  { x: mx, y: my, duration: 0.1, ease: 'none', overwrite: true });
+    gsap.to(cursorRing, { x: mx, y: my, duration: 0.35, ease: 'power2.out', overwrite: true });
+  });
+
+  // Cursor scale on hover
+  document.querySelectorAll('a, button, [data-xp], .quest-node, .skill-pill').forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      gsap.to(cursorDot,  { scale: 1.8, backgroundColor: '#FF6B4A', duration: 0.25, ease: 'back.out(2)' });
+      gsap.to(cursorRing, { scale: 1.6, opacity: 0.12, duration: 0.3, ease: 'power2.out' });
+    });
+    el.addEventListener('mouseleave', () => {
+      gsap.to(cursorDot,  { scale: 1, backgroundColor: '#4AE3A0', duration: 0.25, ease: 'back.out(2)' });
+      gsap.to(cursorRing, { scale: 1, opacity: 0.25, duration: 0.3, ease: 'power2.out' });
+    });
+  });
+
+  // ── XP System ─────────────────────────────────────────────────
+  let xp = 0;
+  const xpTextEl  = document.getElementById('xpText');
+  const xpFillEl  = document.getElementById('xpFill');
+  const levelToast = document.getElementById('levelToast');
+  const milestones = [
+    { xp: 20,  msg: '🎯 Engaged · You\'re paying attention!' },
+    { xp: 60,  msg: '🧠 Deep diver · You\'re serious about clarity!' },
+    { xp: 120, msg: '⚡ Learning nerd · You get it.' },
+    { xp: 200, msg: '🏆 Clarity champion · Let\'s build something great.' }
+  ];
+  let nextMilestone = 0;
+
+  function addXP(amount) {
+    xp += amount;
+    xpTextEl.textContent = xp + ' XP';
+    const pct = Math.min((xp / 200) * 100, 100);
+    gsap.to(xpFillEl, { width: pct + '%', duration: 0.5, ease: 'power2.out' });
+    if (nextMilestone < milestones.length && xp >= milestones[nextMilestone].xp) {
+      showToast(milestones[nextMilestone].msg);
+      nextMilestone++;
+    }
+  }
+
+  function showToast(msg) {
+    levelToast.textContent = msg;
+    gsap.timeline()
+      .to(levelToast, { x: 0, duration: 0.5, ease: 'back.out(1.7)' })
+      .to(levelToast, { x: '200%', duration: 0.4, ease: 'power2.in', delay: 2.5 });
+  }
+
+  document.querySelectorAll('[data-xp]').forEach(el => {
+    let earned = false;
+    el.addEventListener('mouseenter', () => {
+      if (!earned) { addXP(parseInt(el.dataset.xp)); earned = true; }
+    });
+  });
+
+  // ── Scroll: header + floating CTA ─────────────────────────────
+  const header = document.getElementById('header');
+  const floatingCta = document.getElementById('floatingCta');
+  let scrollXpCheckpoints = {};
+
+  // Floating CTA: GSAP-driven show/hide
+  ScrollTrigger.create({
+    start: 400,
+    onEnter:      () => gsap.to(floatingCta, { y: 0, opacity: 1, duration: 0.5, ease: 'back.out(1.7)' }),
+    onLeaveBack:  () => gsap.to(floatingCta, { y: 80, opacity: 0, duration: 0.35, ease: 'power2.in' }),
+  });
+
+  window.addEventListener('scroll', () => {
+    const sy = window.scrollY;
+    header.classList.toggle('scrolled', sy > 50);
+    const cp = Math.floor(sy / 500);
+    if (!scrollXpCheckpoints[cp]) { scrollXpCheckpoints[cp] = true; addXP(5); }
+  });
+
+  // ── Hero Entrance (cinematic) ──────────────────────────────────
+  const heroTl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+  // Blobs drift (continuous)
+  gsap.to('.hero-blob--a', {
+    x: 50, y: 40, scale: 1.1,
+    duration: 14, ease: 'sine.inOut', yoyo: true, repeat: -1
+  });
+  gsap.to('.hero-blob--b', {
+    x: -40, y: -30, scale: 1.08,
+    duration: 18, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 2
+  });
+
+  // Badge pulse dot
+  gsap.to('.hero-badge::before, .hero-badge', {
+    // handled via CSS ::before, use opacity on badge itself
+  });
+  gsap.fromTo('.hero-badge',
+    { opacity: 0, y: -16, scale: 0.9 },
+    { opacity: 1, y: 0, scale: 1, duration: 0.7, ease: 'back.out(2)', delay: 0.1 }
+  );
+
+  // h1 words stagger
+  heroTl
+    .fromTo('.hero h1',
+      { opacity: 0, y: 40 },
+      { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' }, 0.3)
+    // Highlight underline: animate scaleX via clip-path trick
+    .fromTo('.hero h1 .highlight::after',
+      { scaleX: 0 },
+      { scaleX: 1, duration: 0.7, ease: 'power2.out', transformOrigin: 'left' }, 0.85)
+    .fromTo('.hero-lead',
+      { opacity: 0, y: 24 },
+      { opacity: 1, y: 0, duration: 0.7 }, 0.6)
+    .fromTo('.hero-checklist li',
+      { opacity: 0, x: -24 },
+      { opacity: 1, x: 0, duration: 0.5, stagger: 0.12 }, 0.85)
+    .fromTo('.hero-actions',
+      { opacity: 0, y: 16 },
+      { opacity: 1, y: 0, duration: 0.55 }, 1.1)
+    .fromTo('.hero-meta',
+      { opacity: 0, y: 12 },
+      { opacity: 1, y: 0, duration: 0.5 }, 1.25);
+
+  // Hero visual: enter + float loop
+  heroTl.fromTo('.hero-visual',
+    { opacity: 0, x: 40, scale: 0.95 },
+    { opacity: 1, x: 0, scale: 1, duration: 1, ease: 'power2.out' }, 0.4);
+
+  // Hero card float loop
+  gsap.to('.hero-visual-card', {
+    y: -12, rotation: 0.5,
+    duration: 4, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.5
+  });
+
+  // Clarity nodes stagger in
+  gsap.fromTo('.clarity-node',
+    { opacity: 0, x: -20 },
+    { opacity: 1, x: 0, duration: 0.5, stagger: 0.15, ease: 'power2.out', delay: 0.8 }
+  );
+
+  // XP meter fill
+  gsap.fromTo('.xp-meter-fill',
+    { width: '0%' },
+    { width: '68%', duration: 2, ease: 'power2.out', delay: 1.5 }
+  );
+
+  // Floating chips
+  gsap.from('.hero-chip--a', { opacity: 0, x: -20, y: 10, duration: 0.7, ease: 'back.out(1.7)', delay: 1.2 });
+  gsap.from('.hero-chip--b', { opacity: 0, x: 20, y: 10, duration: 0.7, ease: 'back.out(1.7)', delay: 1.4 });
+
+  // Chips float loop
+  gsap.to('.hero-chip--a', { y: -8, duration: 2.8, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 1.5 });
+  gsap.to('.hero-chip--b', { y: -8, duration: 3.2, ease: 'sine.inOut', yoyo: true, repeat: -1, delay: 0 });
+
+  // XP badge float
+  gsap.to('#xpBadge', { y: -6, duration: 2.5, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+  // Star spin
+  gsap.to('.xp-badge .star', { rotation: 360, duration: 3, ease: 'none', repeat: -1 });
+
+  // Hero badge pulse dot (targets the badge container to pulse its ::before content color)
+  gsap.to('.hero-badge', {
+    '--pulse': 0.3,
+    duration: 1, ease: 'sine.inOut', yoyo: true, repeat: -1,
+    onUpdate: function() {}  // CSS ::before handles visual
+  });
+
+  // ── ScrollTrigger reveals (all sections) ──────────────────────
+  // Generic: batch reveals for performance
+  ScrollTrigger.batch('.reveal', {
+    onEnter: batch => gsap.fromTo(batch,
+      { opacity: 0, y: 40 },
+      { opacity: 1, y: 0, duration: 0.75, ease: 'power3.out', stagger: 0.1 }
+    ),
+    start: 'top 88%',
+    once: true,
+  });
+
+  // Mission section
+  ScrollTrigger.create({
+    trigger: '#mission',
+    start: 'top 80%',
+    once: true,
+    onEnter: () => {
+      gsap.from('#mission .eyebrow', { opacity: 0, y: 20, duration: 0.6, ease: 'power2.out' });
+      gsap.from('#mission h2',       { opacity: 0, y: 30, duration: 0.7, ease: 'power2.out', delay: 0.1 });
+      gsap.from('#mission .section-lead', { opacity: 0, y: 20, duration: 0.6, ease: 'power2.out', delay: 0.2 });
+    }
+  });
+
+  // TextPlugin: hero heading types in on load
+  // (Uses TextPlugin for a secondary typewriter on the badge text)
+  gsap.registerPlugin(TextPlugin);
+  const badgeEl = document.getElementById('hero-badge-text');
+  if (badgeEl) {
+    const originalText = badgeEl.textContent;
+    badgeEl.textContent = '';
+    gsap.to(badgeEl, {
+      text: { value: originalText, delimiter: '' },
+      duration: 0.8, ease: 'none', delay: 0.15
+    });
+  }
+
+  // Services cards: stagger in
+  ScrollTrigger.create({
+    trigger: '.services-grid',
+    start: 'top 82%',
+    once: true,
+    onEnter: () => {
+      gsap.fromTo('.service-card',
+        { opacity: 0, y: 50, scale: 0.96 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.65, ease: 'back.out(1.4)', stagger: 0.12 }
+      );
+    }
+  });
+
+  // Quest steps: draw the line then pop nodes in
+  ScrollTrigger.create({
+    trigger: '.quest-map',
+    start: 'top 80%',
+    once: true,
+    onEnter: () => {
+      gsap.fromTo('.quest-line',
+        { scaleY: 0, transformOrigin: 'top' },
+        { scaleY: 1, duration: 0.9, ease: 'power2.inOut' }
+      );
+      gsap.fromTo('.quest-step',
+        { opacity: 0, x: -30 },
+        { opacity: 1, x: 0, duration: 0.6, stagger: 0.18, ease: 'back.out(1.5)', delay: 0.4 }
+      );
+    }
+  });
+
+  // Examples grid
+  ScrollTrigger.create({
+    trigger: '.examples-grid',
+    start: 'top 82%',
+    once: true,
+    onEnter: () => {
+      gsap.fromTo('.example-card',
+        { opacity: 0, y: 40, scale: 0.97 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.6, stagger: 0.09, ease: 'power3.out' }
+      );
+    }
+  });
+
+  // Metrics: count up + bar fill (replaces IntersectionObserver counter)
+  ScrollTrigger.create({
+    trigger: '#metricsGrid',
+    start: 'top 78%',
+    once: true,
+    onEnter: () => {
+      document.querySelectorAll('.count').forEach(el => {
+        const target = parseInt(el.dataset.target);
+        gsap.fromTo({ val: 0 }, { val: target },
+          { duration: 1.5, ease: 'power2.out',
+            onUpdate: function() { el.textContent = Math.round(this.targets()[0].val); }
+          }
+        );
+      });
+      document.querySelectorAll('.metric-bar-fill').forEach(el => {
+        const w = el.style.getPropertyValue('--w') || '60%';
+        gsap.to(el, { width: w, duration: 1.5, ease: 'power2.out', delay: 0.2 });
+      });
+      gsap.fromTo('.metric-card',
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 0.6, stagger: 0.12, ease: 'back.out(1.4)' }
+      );
+      gsap.fromTo('.testimonial',
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.55, stagger: 0.1, ease: 'power2.out', delay: 0.3 }
+      );
+      addXP(15);
+    }
+  });
+
+  // About: portrait slides in, copy follows
+  ScrollTrigger.create({
+    trigger: '#about',
+    start: 'top 78%',
+    once: true,
+    onEnter: () => {
+      gsap.fromTo('.about-portrait-wrap',
+        { opacity: 0, x: -50, rotation: -2 },
+        { opacity: 1, x: 0, rotation: 0, duration: 0.9, ease: 'power3.out' }
+      );
+      gsap.fromTo('.about-copy',
+        { opacity: 0, x: 40 },
+        { opacity: 1, x: 0, duration: 0.8, ease: 'power3.out', delay: 0.15 }
+      );
+      gsap.fromTo('.about-portrait-tag',
+        { opacity: 0, scale: 0.8, y: 10 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.6, ease: 'back.out(2)', delay: 0.5 }
+      );
+      // Flip: skill pills appear with Flip-style stagger
+      gsap.fromTo('.skill-pill',
+        { opacity: 0, scale: 0.7, y: 8 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.4, stagger: 0.07, ease: 'back.out(2)', delay: 0.6 }
+      );
+    }
+  });
+
+  // Pricing
+  ScrollTrigger.create({
+    trigger: '.pricing-grid',
+    start: 'top 82%',
+    once: true,
+    onEnter: () => {
+      // Flip plugin: capture state then animate to final
+      const cards = document.querySelectorAll('.pricing-card');
+      cards.forEach((card, i) => {
+        gsap.fromTo(card,
+          { opacity: 0, y: 40, scale: 0.96 },
+          { opacity: 1, y: 0, scale: 1, duration: 0.65, ease: 'back.out(1.5)', delay: i * 0.14 }
+        );
+      });
+    }
+  });
+
+  // Contact form fields
+  ScrollTrigger.create({
+    trigger: '.contact-inner',
+    start: 'top 80%',
+    once: true,
+    onEnter: () => {
+      gsap.fromTo('.form-field',
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.5, stagger: 0.08, ease: 'power2.out' }
+      );
+    }
+  });
+
+  // ── Hamburger menu (GSAP-powered) ─────────────────────────────
+  const menuToggle = document.getElementById('menuToggle');
+  const mobileMenu = document.getElementById('mobileMenu');
+  const bar1 = menuToggle.querySelector('.hamburger span:nth-child(1)');
+  const bar2 = menuToggle.querySelector('.hamburger span:nth-child(2)');
+  const bar3 = menuToggle.querySelector('.hamburger span:nth-child(3)');
+  const menuLinks = mobileMenu.querySelectorAll('.menu-link');
+  const mobileLangDiv = mobileMenu.querySelector('.mobile-lang');
+
+  let menuOpen = false;
+  let menuTl = null;
+
+  // FIX 1: Use .to() from current GSAP state instead of .fromTo() so
+  // rapid toggling mid-animation doesn't snap to hardcoded from-values.
+  // FIX 2: Add resize listener to close menu and restore overflow on viewport change.
+
+  function buildMenuTl(opening) {
+    const tl = gsap.timeline({ paused: true, defaults: { ease: 'power3.out' } });
+    if (opening) {
+      // Bars → ×  (animate from current inline state, no fromTo snap)
+      tl.to(bar1, { y: 8,  rotation: 45,  width: '100%', duration: 0.4, ease: 'back.inOut(1.5)' }, 0)
+        .to(bar2, { opacity: 0, scaleX: 0,               duration: 0.25 }, 0)
+        .to(bar3, { y: -8, rotation: -45, width: '100%', duration: 0.4, ease: 'back.inOut(1.5)' }, 0)
+        // Menu overlay: animate from current GSAP-tracked state
+        .to(mobileMenu,
+          { clipPath: 'inset(0 0 0% 0)', pointerEvents: 'auto', duration: 0.55, ease: 'power4.out' }, 0.05)
+        // Links: animate from current state (GSAP remembers last position)
+        .to(menuLinks,
+          { opacity: 1, y: 0, duration: 0.45, stagger: 0.07, ease: 'back.out(1.6)' }, 0.25)
+        .to(mobileLangDiv,
+          { opacity: 1, y: 0, duration: 0.4 }, 0.5);
+    } else {
+      // Links fade out
+      tl.to(menuLinks,     { opacity: 0, y: -12, duration: 0.25, stagger: 0.04, ease: 'power2.in' }, 0)
+        .to(mobileLangDiv, { opacity: 0,          duration: 0.2 }, 0)
+        // Menu slides up
+        .to(mobileMenu, { clipPath: 'inset(0 0 100% 0)', pointerEvents: 'none', duration: 0.45, ease: 'power3.in' }, 0.1)
+        // × → bars
+        .to(bar1, { y: 0, rotation: 0, width: '100%', duration: 0.4, ease: 'back.out(1.5)' }, 0.15)
+        .to(bar2, { opacity: 1, scaleX: 1,              duration: 0.3 }, 0.2)
+        .to(bar3, { y: 0, rotation: 0, width: '45%',    duration: 0.4, ease: 'back.out(1.5)' }, 0.15);
+    }
+    return tl;
+  }
+
+  // Establish all initial GSAP states explicitly so .to() always has a known from-value
+  gsap.set(bar1, { transformOrigin: 'center center', y: 0, rotation: 0, width: '100%', scaleX: 1, opacity: 1 });
+  gsap.set(bar2, { transformOrigin: 'center center', scaleX: 1, opacity: 1, width: '70%' });
+  gsap.set(bar3, { transformOrigin: 'center center', y: 0, rotation: 0, width: '45%', scaleX: 1, opacity: 1 });
+  gsap.set(mobileMenu, { clipPath: 'inset(0 0 100% 0)', pointerEvents: 'none' });
+  gsap.set(Array.from(menuLinks), { opacity: 0, y: 24 });
+  gsap.set(mobileLangDiv, { opacity: 0, y: 14 });
+
+  menuToggle.addEventListener('click', () => {
+    menuOpen = !menuOpen;
+    menuToggle.setAttribute('aria-expanded', String(menuOpen));
+    mobileMenu.setAttribute('aria-hidden', String(!menuOpen));
+    header.classList.toggle('menu-open', menuOpen);
+    document.body.style.overflow = menuOpen ? 'hidden' : '';
+    if (menuTl) menuTl.kill();
+    menuTl = buildMenuTl(menuOpen);
+    menuTl.play();
+  });
+
+  function closeMobileMenu() {
+    if (!menuOpen) return;
+    menuOpen = false;
+    menuToggle.setAttribute('aria-expanded', 'false');
+    mobileMenu.setAttribute('aria-hidden', 'true');
+    header.classList.remove('menu-open');
+    document.body.style.overflow = '';
+    if (menuTl) menuTl.kill();
+    menuTl = buildMenuTl(false);
+    menuTl.play();
+  }
+
+  // FIX 3: Close menu on nav link click
+  mobileMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', closeMobileMenu));
+  // Close on Escape
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMobileMenu(); });
+  // FIX 4: Close menu on resize to desktop width to prevent stuck overflow:hidden
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 768 && menuOpen) closeMobileMenu();
+  });
+
+  // ── Service card mouse spotlight ──────────────────────────────
+  document.querySelectorAll('.service-card').forEach(card => {
+    card.addEventListener('mousemove', e => {
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+      card.style.setProperty('--my', ((e.clientY - r.top)  / r.height * 100) + '%');
+    });
+  });
+
+  // ── Quest node hover (GSAP replaces CSS :hover) ───────────────
+  document.querySelectorAll('.quest-node').forEach(node => {
+    node.addEventListener('mouseenter', () =>
+      gsap.to(node, { scale: 1.12, rotation: -5, duration: 0.35, ease: 'back.out(2)' })
+    );
+    node.addEventListener('mouseleave', () =>
+      gsap.to(node, { scale: 1, rotation: 0, duration: 0.4, ease: 'elastic.out(1, 0.5)' })
+    );
+  });
+
+  // ── Particles (canvas) ────────────────────────────────────────
+  const canvas = document.getElementById('particle-canvas');
+  const ctx = canvas.getContext('2d');
+  const resizeCanvas = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  const particles = Array.from({ length: 50 }, () => ({
+    x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+    r: Math.random() * 1.5 + 0.3,
+    vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
+    a: Math.random() * 0.35 + 0.08
+  }));
+
+  function drawParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > canvas.width)  p.vx *= -1;
+      if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(74,227,160,${p.a})`; ctx.fill();
+    });
+    requestAnimationFrame(drawParticles);
+  }
+  drawParticles();
+
+  // ── Marquee: GSAP infinite scroll (replaces CSS animation) ────
+  const marquee = document.querySelector('.mission-marquee');
+  if (marquee) {
+    const totalW = marquee.scrollWidth / 2; // duped content
+    gsap.to(marquee, {
+      x: -totalW, duration: 22, ease: 'none', repeat: -1,
+      modifiers: { x: gsap.utils.unitize(x => parseFloat(x) % totalW) }
+    });
+  }
+
+  // ── Contact form ──────────────────────────────────────────────
+  const contactForm = document.getElementById('contactForm');
+  const formStatus  = document.getElementById('formStatus');
+  const submitBtn   = document.getElementById('submitBtn');
+
+  contactForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    submitBtn.innerHTML = '<span id="submit-btn-text">Sending...</span> <span class="arrow" style="opacity:0">↗</span>';
+    submitBtn.disabled = true;
+    gsap.to(submitBtn, { opacity: 0.6, duration: 0.2 });
+    try {
+      const res = await fetch(contactForm.action, {
+        method: 'POST', body: new FormData(contactForm),
+        headers: { 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        formStatus.textContent = '✓ Sent! I\'ll be in touch within 2 business days.';
+        formStatus.className = 'form-status success';
+        contactForm.reset();
+        gsap.from(formStatus, { opacity: 0, y: 10, duration: 0.4, ease: 'power2.out' });
+        addXP(50);
+        showToast('🚀 Message sent · +50 XP!');
+      } else { throw new Error(); }
+    } catch {
+      formStatus.textContent = 'Something went wrong. Try emailing me directly at Dor1612@gmail.com.';
+      formStatus.className = 'form-status error';
+      gsap.from(formStatus, { opacity: 0, y: 10, duration: 0.4, ease: 'power2.out' });
+    }
+    gsap.to(submitBtn, { opacity: 1, duration: 0.2 });
+    submitBtn.innerHTML = '<span id="submit-btn-text">Send it over</span> <span class="arrow">↗</span>';
+    submitBtn.disabled = false;
+  });
+
+  // ── Initial XP ────────────────────────────────────────────────
+  setTimeout(() => addXP(10), 1500);
+
+  // ── i18n translations ─────────────────────────────────────────
+
+  // ─── i18n translations ───────────────────────────────────────
+  const TRANSLATIONS = {
+    en: {
+      nav: { services:'Services', how:'How it works', examples:'Work', about:'About', cta:'Get in touch', languageLabel:'Language' },
+      hero: {
+        badge:'Training & Learning Design',
+        h1a:'Turn messy knowledge into',
+        h1b:'training that sticks.',
+        lead:"I help small teams stop repeating themselves. You've got knowledge worth sharing — I'll shape it into clear, usable learning that people actually follow through on.",
+        check1:'15-min call, no pressure',
+        check2:'Clear scope before any work starts',
+        check3:'Built for real budgets and timelines',
+        ctaPrimary:"Let's talk",
+        ctaSecondary:'See the work',
+        nameLabel:'Learning designer & UX strategist',
+        cardTitle:'Your learning roadmap',
+        node1:'Discovery call', node1tag:'Done',
+        node2:'Content structure & map', node2tag:'In progress',
+        node3:'Module design & writing', node3tag:'Up next',
+        node4:'Launch-ready delivery', node4tag:'Up next',
+        xpLabel:'Clarity progress',
+      },
+      mission: {
+        eyebrow:'What I believe',
+        h2:"Good training doesn't just inform — it changes what people do.",
+        lead:"Most training fails because it was built to check a box, not to be used. I build learning that earns attention and guides real behavior.",
+      },
+      services: {
+        eyebrow:'What I do',
+        h2:"The right help for where you're stuck.",
+        lead:"I don't do everything. I do a few things really well — structure, content, and the kind of design that makes learning feel effortless.",
+        s1title:'Learning Products', s1chip:'Faster onboarding',
+        s1body:"Courses, onboarding flows, and knowledge hubs that turn scattered information into something people can actually follow.",
+        s1o1:'New hires get up to speed without hand-holding', s1o2:'Fewer repeat questions, less wheel-reinventing', s1o3:'Knowledge that travels with the team',
+        s1link:'Explore this service',
+        s2title:'Workshops & Facilitation', s2chip:'Aligned teams',
+        s2body:'Live sessions that move your team from "we kind of know this" to "we all know exactly what we\'re doing." Built for actual momentum, not just slides.',
+        s2o1:'Shared understanding without overload', s2o2:'Concrete outputs your team will actually use', s2o3:'Better adoption, less resistance to change',
+        s2link:'Explore this service',
+        s3title:'AI-Assisted Learning Tools', s3chip:'Scale without noise',
+        s3body:'Smart tools — chatbots, simulations, interactive exercises — that give your team answers when they need them, without a person in the loop every time.',
+        s3o1:'Always-available answers grounded in your content', s3o2:'Practice and feedback without the bottleneck', s3o3:'Scales with your team as you grow',
+        s3link:'Explore this service',
+      },
+      how: {
+        eyebrow:'The process',
+        h2:'From fuzzy to finished — in four moves.',
+        lead:'I like simple, honest processes. No 12-phase methodology, no jargon-heavy decks. Just a clear path from your goal to a working solution.',
+        step1title:'Clarity call', step1body:'15 minutes to hear what\'s going on, what you need, and whether I\'m the right fit. No pitch, no pressure — just an honest look at the situation.', step1xp:'+10 XP · 15 min',
+        step2title:'Diagnose & scope', step2body:"I map out the learning challenge, identify what's missing, and lay out a realistic scope — so you know exactly what you're signing up for before anything starts.", step2xp:'+20 XP · 3–5 days',
+        step3title:'Design & build', step3body:"I design the structure, write the content, and build the learning experience — always checking in so nothing surprises you at the end.", step3xp:'+40 XP · 2–6 weeks',
+        step4title:'Launch & hand off', step4body:"You get everything ready to use — tested, documented, and explained. I stick around to help you launch smoothly and answer anything that comes up.", step4xp:'+30 XP · Launch day 🚀',
+      },
+      examples: {
+        eyebrow:'Selected work',
+        h2:'Projects that went from unclear to undeniable.',
+        lead:'Real work for real teams. Each project started with a messy problem and ended with something usable.',
+        viewAll:'View all projects',
+        p1title:'Aliyah Course Facilitation', p1body:'A full facilitation system — guides, activities, and pacing frameworks — built for emissaries running live learning sessions.',
+        p2title:'Gamified Knowledge Checks', p2body:'Interactive assessments designed to feel like a game — complete with progress tracking, instant feedback, and earned rewards.',
+        p3title:'JAFI AI Training Partner', p3body:'A conversational AI practice tool for emissaries, trained on real scenarios so they can rehearse sensitive conversations before they happen.',
+        p4title:"Noya's Bears Story Booklets", p4body:'A bilingual story-based learning kit that brought emotional topics to life for young learners — beautifully illustrated and pedagogically grounded.',
+        p5title:'Aliyah Learning Platform', p5body:'End-to-end platform design and content architecture for a distributed learning system used across 40+ global communities.',
+        p6title:'Operations Dashboard', p6body:'A practical internal tool for tracking and reporting on training activity — built to reduce reporting friction and surface the right data fast.',
+      },
+      proof: {
+        eyebrow:'Results',
+        h2:'Numbers that make sense, not just big ones.',
+        lead:"I'll share references when we talk. These are the kinds of outcomes these projects are built to deliver.",
+        m1label:'Shorter onboarding ramp time', m2label:'Faster access to trusted answers', m3label:'Hours saved per team, per month',
+        t1:'"The content finally feels calm and navigable. Our team found what they needed without asking for help."', t1meta:'Ops lead, education nonprofit',
+        t2:'"We went from confusing onboarding to a clear 4-week path. New hires are productive way sooner."', t2meta:'People partner, SaaS startup',
+        t3:'"Shorter training, better retention, less rework. The clarity made all the difference."', t3meta:'Program manager, public sector',
+      },
+      about: {
+        eyebrow:"Who's behind this", h2:"Hi, I'm Dor.",
+        p1:"I'm a learning designer and UX strategist who's spent years figuring out why training fails — and building things that work instead. My background spans psychology, instructional design, and hands-on digital product work.",
+        p2:"I've built learning programs, digital tools, and interactive experiences for educational organizations, nonprofits, and public institutions. Always under real constraints, for real users, with the goal of making complex things feel simple.",
+        p3:"Clarifind is where I bring that practice to clients who want learning solutions that are thoughtful, honest about trade-offs, and built to actually be used — not just to look good in a proposal.",
+        tagName:'Dor Vadai', tagRole:'Learning Designer & UX Strategist',
+      },
+      pricing: {
+        eyebrow:'Pricing', h2:'Sized for small teams, honest about cost.',
+        lead:"You'll always know the scope and the cost before anything starts. No surprises, no scope creep ambushes.",
+        c1title:'Small teams welcome', c1body:"I specialize in projects that stay lean, focused, and realistic for busy teams with limited time and budget.",
+        c1l1:'Scaled scope options to fit your capacity', c1l2:'Collaborative planning, no surprise complexity', c1l3:'Flexible pacing for busy seasons',
+        c2title:'Special consideration', c2body:"Adjusted packages available for nonprofits, arts organizations, education, and social work. I care about the work more than the rate.",
+        c2l1:"Share your context — I'll suggest something fair", c2l2:'No awkward negotiation, no hidden fees',
+      },
+      contact: {
+        h2:'Ready to make learning click?',
+        lead:"Tell me what's going on. I'll read it carefully and come back with a concrete suggestion — usually within two business days.",
+        fname:'Your name', femail:'Email address', forg:'Organization', forgOpt:'(optional)',
+        fservice:'What kind of help?', fserviceOpt:'(optional)', fservicePh:'Not sure yet',
+        fmsg:"What are you trying to solve?",
+        fmsgPh:"Tell me about the situation — what's messy, who's involved, and what a win looks like for you.",
+        submit:'Send it over', fnote:'I reply within 2 business days.',
+        fnamePh:'Jane Doe', femailPh:'you@company.com', forgPh:'Your org or company',
+        opt1:'Not sure yet', opt2:'Learning products', opt3:'Workshop or facilitation', opt4:'AI-assisted tools', opt5:'Something else',
+        success:"✓ Sent! I'll be in touch within 2 business days.",
+        error:'Something went wrong. Try emailing me directly at Dor1612@gmail.com.',
+      },
+      footer: { tagline:'Learning, made clear.', copy:'Clarifind. All rights reserved.' },
+    },
+    he: {
+      dir: 'rtl',
+      nav: { services:'שירותים', how:'איך זה עובד', examples:'עבודות', about:'עליי', cta:'דברו איתי', languageLabel:'שפה' },
+      hero: {
+        badge:'הכשרות ממוקדות לצוותים קטנים',
+        h1a:'להפוך ידע מבולגן',
+        h1b:'להכשרה שנשארת.',
+        lead:'אני עוזר לצוותים קטנים להפסיק לחזור על עצמם. יש לכם ידע שווה שיתוף — אני אעצב אותו ללמידה ברורה שאנשים באמת משתמשים בה.',
+        check1:'שיחה של 15 דקות, בלי לחץ',
+        check2:'היקף ברור לפני שמתחילים',
+        check3:'מותאם לתקציבים ולוחות זמנים אמיתיים',
+        ctaPrimary:'בואו נדבר',
+        ctaSecondary:'לצפייה בעבודות',
+        nameLabel:'מעצב למידה ואסטרטג UX',
+        cardTitle:'מפת הלמידה שלכם',
+        node1:'שיחת גילוי', node1tag:'הושלם',
+        node2:'מבנה ומפת תוכן', node2tag:'בתהליך',
+        node3:'עיצוב מודולים וכתיבה', node3tag:'הבא',
+        node4:'מסירה מוכנה להשקה', node4tag:'הבא',
+        xpLabel:'התקדמות בהירות',
+      },
+      mission: {
+        eyebrow:'מה אני מאמין',
+        h2:'הכשרה טובה לא רק מודיעה — היא משנה מה שאנשים עושים.',
+        lead:'רוב ההכשרות נכשלות כי הן נבנו כדי לסמן וי, לא כדי לשמש. אני בונה למידה שמרוויחה את תשומת הלב ומנחה התנהגות אמיתית.',
+      },
+      services: {
+        eyebrow:'מה אני עושה',
+        h2:'הכלים הנכונים למקום שתקעתם.',
+        lead:'אני לא עושה הכל. אני עושה כמה דברים ממש טוב — מבנה, תוכן, ועיצוב שגורם ללמידה להרגיש קלה.',
+        s1title:'מוצרי למידה', s1chip:'אונבורדינג מהיר',
+        s1body:'קורסים, תהליכי קליטה ומרכזי ידע שהופכים מידע מפוזר למשהו שאפשר באמת לעקוב אחריו.',
+        s1o1:'עובדים חדשים מתעדכנים בלי צורך בהדרכה צמודה', s1o2:'פחות שאלות חוזרות, פחות המצאת הגלגל', s1o3:'ידע שנוסע עם הצוות',
+        s1link:'לפרטים נוספים',
+        s2title:'סדנאות והנחיה', s2chip:'צוותים מיושרים',
+        s2body:'מפגשים חיים שמעבירים את הצוות מ"אנחנו בערך יודעים" ל"כולנו יודעים בדיוק מה עושים". בנוי לתנופה אמיתית, לא רק שקפים.',
+        s2o1:'הבנה משותפת בלי עומס', s2o2:'תוצרים מוחשיים שהצוות ישתמש בהם', s2o3:'אימוץ טוב יותר, פחות התנגדות לשינוי',
+        s2link:'לפרטים נוספים',
+        s3title:'כלי למידה בסיוע AI', s3chip:'סקייל בלי רעש',
+        s3body:'כלים חכמים — צ\'אטבוטים, סימולציות, תרגולים אינטראקטיביים — שנותנים לצוות תשובות כשצריך, בלי אדם בלולאה כל פעם.',
+        s3o1:'תשובות זמינות תמיד, מבוססות על התוכן שלכם', s3o2:'תרגול ומשוב בלי צוואר בקבוק', s3o3:'גדל עם הצוות שלכם',
+        s3link:'לפרטים נוספים',
+      },
+      how: {
+        eyebrow:'התהליך',
+        h2:'מעורפל למוגמר — בארבעה מהלכים.',
+        lead:'אני אוהב תהליכים פשוטים וכנים. אין מתודולוגיה של 12 שלבים, אין מצגות עמוסות מונחים. רק דרך ברורה מהמטרה שלכם לפתרון עובד.',
+        step1title:'שיחת בהירות', step1body:'15 דקות כדי לשמוע מה קורה, מה צריך, ואם אני ההתאמה הנכונה. בלי מכירה, בלי לחץ — רק מבט כן על המצב.', step1xp:'+10 XP · 15 דקות',
+        step2title:'אבחון והיקף', step2body:'אני ממפה את אתגר הלמידה, מזהה מה חסר, ומציג היקף ריאלי — כדי שתדעו בדיוק למה אתם נרשמים לפני שמשהו מתחיל.', step2xp:'+20 XP · 3–5 ימים',
+        step3title:'עיצוב ובנייה', step3body:'אני מעצב את המבנה, כותב את התוכן, ובונה את חוויית הלמידה — תמיד בצ\'ק אין כדי שלא יהיו הפתעות בסוף.', step3xp:'+40 XP · 2–6 שבועות',
+        step4title:'השקה ומסירה', step4body:'אתם מקבלים הכל מוכן לשימוש — בדוק, מתועד ומוסבר. אני נשאר להמסיר חלק ולענות על כל שאלה שעולה.', step4xp:'+30 XP · יום ההשקה 🚀',
+      },
+      examples: {
+        eyebrow:'עבודות נבחרות',
+        h2:'פרויקטים שעברו מעורפל לבלתי ניתן להכחשה.',
+        lead:'עבודה אמיתית לצוותים אמיתיים. כל פרויקט התחיל בבעיה מבולגנת והסתיים במשהו שימושי.',
+        viewAll:'לכל הפרויקטים',
+        p1title:'הנחיית קורס עלייה', p1body:'מערכת הנחיה מלאה — מדריכים, פעילויות ומסגרות קצב — שנבנתה לשליחים המנהלים מפגשי למידה.',
+        p2title:'בדיקות ידע מגמיפיות', p2body:'הערכות אינטראקטיביות שמרגישות כמו משחק — עם מעקב התקדמות, משוב מיידי ופרסים שהרווחתם.',
+        p3title:'שותף ההכשרה AI של ג\'פ"א', p3body:'כלי תרגול AI שיחתי לשליחים, מאומן על תרחישים אמיתיים כדי שיוכלו לחזור על שיחות רגישות לפני שהן קורות.',
+        p4title:'חוברות סיפור הדובים של נויה', p4body:'ערכת למידה דו-לשונית מבוססת סיפור שהביאה נושאים רגשיים לחיים עבור לומדים צעירים.',
+        p5title:'פלטפורמת למידה עלייה', p5body:'עיצוב פלטפורמה מקצה לקצה ואדריכלות תוכן למערכת למידה מבוזרת בשימוש ב-40+ קהילות גלובליות.',
+        p6title:'דשבורד תפעולי', p6body:'כלי פנימי מעשי למעקב ודיווח על פעילות הכשרה — בנוי להפחית חיכוך בדיווח ולחשוף את הנתונים הנכונים מהר.',
+      },
+      proof: {
+        eyebrow:'תוצאות',
+        h2:'מספרים שהגיוניים, לא רק גדולים.',
+        lead:'אשמח לשתף רפרנסים כשנדבר. אלו סוגי התוצאות שהפרויקטים בנויים להשיג.',
+        m1label:'זמן התאקלמות קצר יותר', m2label:'גישה מהירה יותר לתשובות', m3label:'שעות שנחסכות לצוות בחודש',
+        t1:'"הכל סוף סוף מרגיש רגוע וברור. מצאנו מה שחיפשנו בלי לשאול."', t1meta:'מנהלת תפעול, עמותה חינוכית',
+        t2:'"עברנו מאונבורדינג מבלבל לנתיב ברור של 4 שבועות. עובדים חדשים פרודוקטיביים הרבה יותר מוקדם."', t2meta:'שותף HR, סטארטאפ SaaS',
+        t3:'"הכשרה קצרה יותר, שימור טוב יותר, פחות עבודה מחדש. הבהירות עשתה את כל ההבדל."', t3meta:'מנהל תכנית, מגזר ציבורי',
+      },
+      about: {
+        eyebrow:'מי עומד מאחורי זה', h2:'היי, אני דור.',
+        p1:'אני מעצב למידה ואסטרטג UX שביילה שנים מבין למה הכשרות נכשלות — ובונה דברים שעובדים במקום. הרקע שלי משתרע על פסיכולוגיה, עיצוב הוראתי ועבודה מעשית על מוצרים דיגיטליים.',
+        p2:'בניתי תכניות למידה, כלים דיגיטליים וחוויות אינטראקטיביות לארגוני חינוך, עמותות ומוסדות ציבוריים. תמיד תחת מגבלות אמיתיות, למשתמשים אמיתיים, עם המטרה להפוך דברים מורכבים לפשוטים.',
+        p3:'Clarifind הוא המקום שבו אני מביא את הגישה הזו ללקוחות שרוצים פתרונות למידה מחושבים, כנים לגבי פשרות, ובנויים לשימוש בפועל — לא רק להיראות טוב בהצעה.',
+        tagName:'דור ודאי', tagRole:'מעצב למידה ואסטרטג UX',
+      },
+      pricing: {
+        eyebrow:'תמחור', h2:'מותאם לצוותים קטנים, כנה לגבי עלויות.',
+        lead:'תמיד תדעו את ההיקף והעלות לפני שמשהו מתחיל. אין הפתעות, אין מלכודות.',
+        c1title:'צוותים קטנים מוזמנים', c1body:'אני מתמחה בפרויקטים שנשארים רזים, ממוקדים וריאליים לצוותים עסוקים עם זמן ותקציב מוגבלים.',
+        c1l1:'אפשרויות היקף מותאמות לקצב שלכם', c1l2:'תכנון שיתופי, בלי מורכבות מפתיעה', c1l3:'קצב גמיש לעונות עמוסות',
+        c2title:'התחשבות מיוחדת', c2body:'חבילות מותאמות זמינות לעמותות, ארגוני אמנות, חינוך ועבודה סוציאלית. אני מעריך את העבודה יותר מהתעריף.',
+        c2l1:'שתפו את ההקשר — אציע משהו הוגן', c2l2:'אין משא ומתן מביך, אין עמלות נסתרות',
+      },
+      contact: {
+        h2:'מוכנים לעשות סדר בלמידה?',
+        lead:'ספרו לי מה קורה. אקרא בעיון ואחזור עם הצעה קונקרטית — בדרך כלל תוך שני ימי עסקים.',
+        fname:'שמכם', femail:'כתובת אימייל', forg:'ארגון', forgOpt:'(לא חובה)',
+        fservice:'איזה סיוע?', fserviceOpt:'(לא חובה)', fservicePh:'עוד לא בטוחים',
+        fmsg:'מה אתם מנסים לפתור?',
+        fmsgPh:'ספרו על המצב — מה מבולגן, מי מעורב, ואיך נראית הצלחה מבחינתכם.',
+        submit:'שלחו את הפנייה', fnote:'אני עונה תוך שני ימי עסקים.',
+        fnamePh:'דנה לוי', femailPh:'you@company.com', forgPh:'הארגון שלכם',
+        opt1:'עוד לא בטוחים', opt2:'מוצרי למידה', opt3:'סדנה או הנחיה', opt4:'כלי AI ללמידה', opt5:'משהו אחר',
+        success:'✓ נשלח! אחזור אליכם תוך שני ימי עסקים.',
+        error:'משהו השתבש. נסו לשלוח אימייל ישירות ל-Dor1612@gmail.com.',
+      },
+      footer: { tagline:'למידה מסודרת, בלי רעש מיותר.', copy:'Clarifind. כל הזכויות שמורות.' },
+    }
+  };
+
+  // ─── Language system ──────────────────────────────────────────
+  let currentLang = 'en';
+
+  function setLang(lang) {
+    currentLang = lang;
+    const t = TRANSLATIONS[lang];
+    const isHe = lang === 'he';
+    document.documentElement.lang = lang;
+    document.documentElement.dir = isHe ? 'rtl' : 'ltr';
+
+    // Toggle RTL body padding adjustments
+    document.body.classList.toggle('rtl', isHe);
+
+    // Update all lang buttons
+    document.querySelectorAll('[data-lang]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lang === lang);
+    });
+
+    // Nav links
+    document.querySelectorAll('[data-i18n-nav]').forEach(el => {
+      const key = el.dataset.i18nNav.split('.')[1];
+      if (t.nav[key]) el.textContent = t.nav[key];
+    });
+    document.querySelectorAll('[data-i18n-mob]').forEach(el => {
+      const key = el.dataset.i18nMob.split('.')[1];
+      if (t.nav[key]) el.textContent = t.nav[key];
+    });
+
+    // Hero
+    const hero = t.hero;
+    setText('hero-badge-text', hero.badge);
+    setText('hero-h1a', hero.h1a);
+    setText('hero-h1b', hero.h1b);
+    setText('hero-lead-text', hero.lead);
+    setText('hero-check1', hero.check1);
+    setText('hero-check2', hero.check2);
+    setText('hero-check3', hero.check3);
+    setText('hero-cta-primary', hero.ctaPrimary);
+    setText('hero-cta-secondary', hero.ctaSecondary);
+    setText('hero-name-label', hero.nameLabel);
+    setText('card-title', hero.cardTitle);
+    setText('node1-label', hero.node1); setText('node1-tag', hero.node1tag);
+    setText('node2-label', hero.node2); setText('node2-tag', hero.node2tag);
+    setText('node3-label', hero.node3); setText('node3-tag', hero.node3tag);
+    setText('node4-label', hero.node4); setText('node4-tag', hero.node4tag);
+    setText('xp-meter-label-text', hero.xpLabel);
+
+    // Mission
+    setText('mission-eyebrow', t.mission.eyebrow);
+    setText('mission-h2', t.mission.h2);
+    setText('mission-lead', t.mission.lead);
+
+    // Services
+    const sv = t.services;
+    setText('services-eyebrow', sv.eyebrow); setText('services-h2', sv.h2); setText('services-lead', sv.lead);
+    ['s1','s2','s3'].forEach(s => {
+      setText(s+'-title', sv[s+'title']); setText(s+'-chip', sv[s+'chip']);
+      setText(s+'-body', sv[s+'body']);
+      setText(s+'-o1', sv[s+'o1']); setText(s+'-o2', sv[s+'o2']); setText(s+'-o3', sv[s+'o3']);
+      setText(s+'-link', sv[s+'link']);
+    });
+
+    // How
+    const hw = t.how;
+    setText('how-eyebrow', hw.eyebrow); setText('how-h2', hw.h2); setText('how-lead', hw.lead);
+    [1,2,3,4].forEach(n => {
+      setText('step'+n+'-title', hw['step'+n+'title']);
+      setText('step'+n+'-body', hw['step'+n+'body']);
+      setText('step'+n+'-xp', hw['step'+n+'xp']);
+    });
+
+    // Examples
+    const ex = t.examples;
+    setText('examples-eyebrow', ex.eyebrow); setText('examples-h2', ex.h2); setText('examples-lead', ex.lead);
+    setText('examples-viewall', ex.viewAll);
+    [1,2,3,4,5,6].forEach(n => {
+      setText('p'+n+'-title', ex['p'+n+'title']); setText('p'+n+'-body', ex['p'+n+'body']);
+    });
+
+    // Proof
+    const pr = t.proof;
+    setText('proof-eyebrow', pr.eyebrow); setText('proof-h2', pr.h2); setText('proof-lead', pr.lead);
+    setText('m1-label', pr.m1label); setText('m2-label', pr.m2label); setText('m3-label', pr.m3label);
+    setText('t1-quote', pr.t1); setText('t1-meta', pr.t1meta);
+    setText('t2-quote', pr.t2); setText('t2-meta', pr.t2meta);
+    setText('t3-quote', pr.t3); setText('t3-meta', pr.t3meta);
+
+    // About
+    const ab = t.about;
+    setText('about-eyebrow', ab.eyebrow); setText('about-h2', ab.h2);
+    setText('about-p1', ab.p1); setText('about-p2', ab.p2); setText('about-p3', ab.p3);
+    setText('about-tag-name', ab.tagName); setText('about-tag-role', ab.tagRole);
+
+    // Pricing
+    const pr2 = t.pricing;
+    setText('pricing-eyebrow', pr2.eyebrow); setText('pricing-h2', pr2.h2); setText('pricing-lead', pr2.lead);
+    setText('pc1-title', pr2.c1title); setText('pc1-body', pr2.c1body);
+    setText('pc1-l1', pr2.c1l1); setText('pc1-l2', pr2.c1l2); setText('pc1-l3', pr2.c1l3);
+    setText('pc2-title', pr2.c2title); setText('pc2-body', pr2.c2body);
+    setText('pc2-l1', pr2.c2l1); setText('pc2-l2', pr2.c2l2);
+
+    // Contact
+    const ct = t.contact;
+    setText('contact-h2', ct.h2); setText('contact-lead', ct.lead);
+    setLabel('field-name-label', ct.fname); setLabel('field-email-label', ct.femail);
+    setLabel('field-org-label', ct.forg); setLabel('field-service-label', ct.fservice);
+    setLabel('field-msg-label', ct.fmsg);
+    setAttr('field-name-input', 'placeholder', ct.fnamePh);
+    setAttr('field-email-input', 'placeholder', ct.femailPh);
+    setAttr('field-org-input', 'placeholder', ct.forgPh);
+    setAttr('field-msg-input', 'placeholder', ct.fmsgPh);
+    setText('submit-btn-text', ct.submit);
+    setText('form-note-text', ct.fnote);
+    // Select options
+    const sel = document.getElementById('field-service-input');
+    if (sel) {
+      const opts = [ct.opt1, ct.opt2, ct.opt3, ct.opt4, ct.opt5];
+      Array.from(sel.options).forEach((o, i) => { if (opts[i]) o.text = opts[i]; });
+    }
+
+    // Footer
+    setText('footer-tagline', t.footer.tagline);
+    setText('footer-copy-text', t.footer.copy);
+    setText('floating-cta-text', ct.ctaPrimary || ct.submit);
+  }
+
+  function setText(id, val) { const el = document.getElementById(id); if (el && val !== undefined) el.textContent = val; }
+  function setAttr(id, attr, val) { const el = document.getElementById(id); if (el && val !== undefined) el.setAttribute(attr, val); }
+  function setLabel(id, val) { const el = document.getElementById(id); if (el && val !== undefined) el.firstChild.textContent = val + ' '; }
+
+  // Wire up all lang buttons
+  document.querySelectorAll('[data-lang]').forEach(btn => {
+    btn.addEventListener('click', () => { setLang(btn.dataset.lang); closeMobileMenu(); });
+  });
+
+  // ─── Mobile menu ─────────────────────────────────────────────
+  const menuToggle = document.getElementById('menuToggle');
+  const mobileMenu = document.getElementById('mobileMenu');
+  menuToggle.addEventListener('click', () => {
+    const isOpen = mobileMenu.classList.contains('open');
+    mobileMenu.classList.toggle('open');
+    header.classList.toggle('menu-open', !isOpen);
+    menuToggle.setAttribute('aria-expanded', String(!isOpen));
+    mobileMenu.setAttribute('aria-hidden', String(isOpen));
+    document.body.style.overflow = isOpen ? '' : 'hidden';
+  });
+  function closeMobileMenu() {
+    mobileMenu.classList.remove('open');
+    header.classList.remove('menu-open');
+    menuToggle.setAttribute('aria-expanded', 'false');
+    mobileMenu.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+  // Close on nav link click
+  mobileMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', closeMobileMenu));
+  // Close on Escape
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMobileMenu(); });
+
+  // ─── Contact form ─────────────────────────────────────────────
+  const contactForm = document.getElementById('contactForm');
+  const formStatus = document.getElementById('formStatus');
+  const submitBtn = document.getElementById('submitBtn');
+
+  contactForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitBtn.innerHTML = '<span id="submit-btn-text">Sending...</span> <span class="arrow" style="opacity:0">↗</span>';
+    submitBtn.disabled = true;
+    try {
+      const res = await fetch(contactForm.action, {
+        method: 'POST', body: new FormData(contactForm),
+        headers: { 'Accept': 'application/json' }
+      });
+      if (res.ok) {
+        formStatus.textContent = '✓ Sent! I\'ll be in touch within 2 business days.';
+        formStatus.className = 'form-status success';
+        contactForm.reset();
+        addXP(50);
+        showToast('🚀 Message sent · +50 XP!');
+      } else {
+        throw new Error();
+      }
+    } catch {
+      formStatus.textContent = 'Something went wrong. Try emailing me directly at Dor1612@gmail.com.';
+      formStatus.className = 'form-status error';
+    }
+    submitBtn.innerHTML = '<span id="submit-btn-text">Send it over</span> <span class="arrow">↗</span>';
+    submitBtn.disabled = false;
+  });
+
+  // ─── Particle canvas (subtle) ────────────────────────────────
+  const canvas = document.getElementById('particle-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+
+  const particles = Array.from({length: 50}, () => ({
+    x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+    r: Math.random() * 1.5 + 0.3,
+    vx: (Math.random() - 0.5) * 0.3, vy: (Math.random() - 0.5) * 0.3,
+    a: Math.random() * 0.4 + 0.1
+  }));
+
+  function animateParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+      if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(74,227,160,${p.a})`; ctx.fill();
+    });
+    requestAnimationFrame(animateParticles);
+  }
+  animateParticles();
+
+  // ─── Initial XP for visiting ─────────────────────────────────
+  setTimeout(() => addXP(10), 1500);
+
+  </script>
+</body>
 </html>
