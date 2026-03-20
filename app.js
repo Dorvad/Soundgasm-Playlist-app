@@ -78,31 +78,39 @@ const loadState = () => {
 
 /* ── COLLAPSIBLE ADD PANEL ──────────────────────────── */
 let addPanelOpen = true;
+let addPanelAnimating = false;
+
+const setAddPanelState = open => {
+  if (addPanelAnimating || addPanelOpen === open) return;
+  addPanelAnimating = true;
+  addPanelOpen = open;
+
+  if (open) {
+    addPanelBody.classList.remove("is-collapsed");
+    addChevron.classList.add("is-open");
+    addPanelBody.style.maxHeight = addPanelBody.scrollHeight + "px";
+  } else {
+    addChevron.classList.remove("is-open");
+    const currentHeight = addPanelBody.scrollHeight;
+    addPanelBody.style.maxHeight = currentHeight + "px";
+    requestAnimationFrame(() => {
+      addPanelBody.classList.add("is-collapsed");
+      addPanelBody.style.maxHeight = "0px";
+    });
+  }
+};
+
 addPanelBody.style.maxHeight = "none";
 addChevron.classList.add("is-open");
 
 addPanelBody.addEventListener("transitionend", e => {
-  if (e.propertyName === "max-height" && addPanelOpen) {
-    addPanelBody.style.maxHeight = "none";
-  }
+  if (e.propertyName !== "max-height") return;
+  if (addPanelOpen) addPanelBody.style.maxHeight = "none";
+  addPanelAnimating = false;
 });
 
 addPanelToggle.addEventListener("click", () => {
-  addPanelOpen = !addPanelOpen;
-  if (addPanelOpen) {
-    addPanelBody.classList.remove("is-collapsed");
-    addPanelBody.style.maxHeight = addPanelBody.scrollHeight + "px";
-    addChevron.classList.add("is-open");
-  } else {
-    if (addPanelBody.style.maxHeight === "none") {
-      addPanelBody.style.maxHeight = addPanelBody.scrollHeight + "px";
-    }
-    requestAnimationFrame(() => {
-      addPanelBody.style.maxHeight = "0";
-      addPanelBody.classList.add("is-collapsed");
-      addChevron.classList.remove("is-open");
-    });
-  }
+  setAddPanelState(!addPanelOpen);
 });
 
 /* ── NOW PLAYING UPDATE ─────────────────────────────── */
@@ -436,7 +444,7 @@ const addUrls = async () => {
     urlInput.value = "";
     setStatus(`Added ${results.length} track${results.length > 1 ? "s" : ""} to your queue.`, "success");
     // Auto-collapse add panel
-    if (addPanelOpen) addPanelToggle.click();
+    setAddPanelState(false);
   }
 };
 
