@@ -3,54 +3,138 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Soundgasm Playlist Player</title>
+    <title>Soundgasm Player</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!-- Ambient background orbs -->
+    <div class="bg-orb bg-orb--1"></div>
+    <div class="bg-orb bg-orb--2"></div>
+    <div class="bg-orb bg-orb--3"></div>
+
     <main class="app">
-      <header class="app__header">
-        <h1>Soundgasm Playlist Player</h1>
-        <p>
-          Build your listening queue in seconds, then drag tracks to set the perfect
-          play order.
-        </p>
-      </header>
 
-      <section class="card">
-        <label for="urlInput">Add Soundgasm URLs (one per line)</label>
-        <textarea
-          id="urlInput"
-          rows="6"
-          placeholder="https://soundgasm.net/user/track-name"
-        ></textarea>
-        <div class="actions">
-          <button id="addBtn" type="button">Add to queue</button>
+      <!-- ── NOW PLAYING HERO ───────────────────────── -->
+      <section class="player-hero">
+        <div class="vinyl-stage">
+          <div class="vinyl-ring vinyl-ring--outer"></div>
+          <div class="vinyl" id="vinylDisc">
+            <div class="vinyl__label">
+              <div class="vinyl__label-inner" id="vinylLabel">
+                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="20" cy="20" r="18" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+                  <path d="M16 14l10 6-10 6V14z" fill="rgba(255,255,255,0.6)"/>
+                </svg>
+              </div>
+            </div>
+            <div class="vinyl__progress" id="vinylProgress"></div>
+          </div>
+          <div class="vinyl-ring vinyl-ring--inner"></div>
         </div>
-        <p id="status" class="status" role="status">Ready when you are.</p>
+
+        <div class="player-info">
+          <div class="player-info__track">
+            <p class="player-info__label">NOW PLAYING</p>
+            <h1 class="player-info__title" id="nowPlayingTitle">—</h1>
+            <p class="player-info__sub" id="nowPlayingUrl">Add tracks to get started</p>
+          </div>
+
+          <div class="player-controls">
+            <button class="ctrl-btn ctrl-btn--icon" id="shuffleBtn" title="Shuffle" aria-label="Shuffle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+                <polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/>
+              </svg>
+            </button>
+            <button class="ctrl-btn ctrl-btn--icon" id="prevBtn" title="Previous" aria-label="Previous">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+            </button>
+            <button class="ctrl-btn ctrl-btn--play" id="playBtn" aria-label="Play/Pause">
+              <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              <svg class="pause-icon" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            </button>
+            <button class="ctrl-btn ctrl-btn--icon" id="nextBtn" title="Next" aria-label="Next">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm2.5-6 5.5 3.9V8.1L8.5 12zM16 6h2v12h-2z"/></svg>
+            </button>
+            <button class="ctrl-btn ctrl-btn--icon" id="repeatBtn" title="Repeat" aria-label="Repeat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                <polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Seek bar -->
+          <div class="seek-row">
+            <span class="seek-time" id="currentTime">0:00</span>
+            <div class="seek-bar" id="seekBar">
+              <div class="seek-bar__fill" id="seekFill"></div>
+              <div class="seek-bar__thumb" id="seekThumb"></div>
+            </div>
+            <span class="seek-time" id="totalTime">0:00</span>
+          </div>
+
+          <!-- Status message -->
+          <p id="status" class="status-msg" role="status"></p>
+        </div>
       </section>
 
-      <section class="card">
-        <div class="queue-header">
-          <h2>Queue</h2>
-          <p class="queue-hint">Tip: drag and drop tracks to reorder your queue.</p>
+      <!-- ── ADD TRACKS ─────────────────────────────── -->
+      <section class="panel panel--add" id="addPanel">
+        <div class="panel__header" id="addPanelToggle">
+          <div class="panel__title-row">
+            <span class="panel__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+              </svg>
+            </span>
+            <h2 class="panel__title">Add Tracks</h2>
+          </div>
+          <span class="panel__chevron" id="addChevron">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </span>
         </div>
-        <div class="queue-controls actions">
-          <button id="playBtn" type="button">Play queue</button>
-          <button id="nextBtn" type="button">Skip to next</button>
-          <button id="clearQueueBtn" type="button" class="button--danger">
-            Clear queue
-          </button>
+        <div class="panel__body" id="addPanelBody">
+          <label class="field-label" for="urlInput">Soundgasm URLs — one per line</label>
+          <textarea
+            id="urlInput"
+            rows="4"
+            placeholder="https://soundgasm.net/user/track-name&#10;https://soundgasm.net/user/another-track"
+          ></textarea>
+          <div class="row-actions">
+            <button class="btn btn--primary" id="addBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add to Queue
+            </button>
+          </div>
         </div>
-        <ul id="queueList" class="queue"></ul>
       </section>
 
-      <section class="card">
-        <h2>Player</h2>
-        <audio id="audio" controls preload="none"></audio>
-        <p id="nowPlaying" class="now-playing">Nothing playing yet.</p>
+      <!-- ── QUEUE ──────────────────────────────────── -->
+      <section class="panel panel--queue">
+        <div class="panel__header">
+          <div class="panel__title-row">
+            <span class="panel__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+              </svg>
+            </span>
+            <h2 class="panel__title">Queue <span class="queue-count" id="queueCount">0</span></h2>
+          </div>
+          <button class="btn btn--ghost btn--sm" id="clearQueueBtn" type="button">Clear all</button>
+        </div>
+        <div class="panel__body panel__body--no-pad">
+          <ul id="queueList" class="queue-list"></ul>
+        </div>
       </section>
+
     </main>
 
+    <audio id="audio" preload="none" style="display:none"></audio>
     <script src="app.js" defer></script>
   </body>
 </html>
