@@ -5,6 +5,8 @@ const STORAGE_KEY   = "soundgasmPlaylistState";
 /* ── DOM REFS ───────────────────────────────────────── */
 const urlInput       = document.getElementById("urlInput");
 const addBtn         = document.getElementById("addBtn");
+const addFilesBtn    = document.getElementById("addFilesBtn");
+const fileInput      = document.getElementById("fileInput");
 const playBtn        = document.getElementById("playBtn");
 const nextBtn        = document.getElementById("nextBtn");
 const prevBtn        = document.getElementById("prevBtn");
@@ -59,18 +61,54 @@ const initials = str => {
     : (words[0]?.[0] ?? "?").toUpperCase();
 };
 
+const isLocalTrack = track => track?.source === "local-file";
+
+const makeLocalFileId = file => `${file.name}::${file.size}::${file.lastModified}`;
+
+const revokeTrackUrl = track => {
+  if (!isLocalTrack(track)) return;
+  if (typeof track.audioUrl === "string" && track.audioUrl.startsWith("blob:")) {
+    URL.revokeObjectURL(track.audioUrl);
+  }
+};
+
 /* ── PERSIST ────────────────────────────────────────── */
 const saveState = () => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ queue, currentIndex }));
+  const persistedQueue = [];
+  let persistedIndex = -1;
+
+  queue.forEach((track, index) => {
+    if (isLocalTrack(track)) return;
+    if (index === currentIndex) persistedIndex = persistedQueue.length;
+    persistedQueue.push(track);
+  });
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    queue: persistedQueue,
+    currentIndex: persistedIndex
+  }));
 };
 
 const loadState = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
+
     const p = JSON.parse(raw);
-    if (Array.isArray(p.queue)) queue = p.queue;
-    if (typeof p.currentIndex === "number") currentIndex = p.currentIndex;
+    if (Array.isArray(p.queue)) {
+      const droppedCount = p.queue.filter(item => item?.source === "local-file" || item?.audioUrl?.startsWith?.("blob:")).length;
+      queue = p.queue.filter(item => item && item.source !== "local-file" && !item.audioUrl?.startsWith?.("blob:"));
+
+      if (droppedCount > 0) {
+        setStatus(`Skipped ${droppedCount} expired local file track${droppedCount > 1 ? "s" : ""} after reload.`, "info");
+      }
+    }
+
+    if (typeof p.currentIndex === "number" && p.currentIndex >= 0 && p.currentIndex < queue.length) {
+      currentIndex = p.currentIndex;
+    } else {
+      currentIndex = -1;
+    }
   } catch (e) {
     console.error("State load failed", e);
   }
@@ -374,6 +412,7 @@ const resetPlayer = () => {
 };
 
 const removeAtIndex = index => {
+  const track = queue[index];
   if (index === currentIndex) {
     audioEl.pause();
     audioEl.removeAttribute("src");
@@ -383,12 +422,15 @@ const removeAtIndex = index => {
   } else if (index < currentIndex) {
     currentIndex -= 1;
   }
+
+  revokeTrackUrl(track);
   queue.splice(index, 1);
   renderQueue();
   saveState();
 };
 
 const clearQueue = () => {
+  queue.forEach(revokeTrackUrl);
   queue = [];
   resetPlayer();
   setStatus("Queue cleared.", "info");
@@ -448,8 +490,49 @@ const addUrls = async () => {
   }
 };
 
+const addFiles = () => {
+  const files = Array.from(fileInput.files || []);
+  if (files.length === 0) {
+    setStatus("Choose at least one audio file.", "error");
+    return;
+  }
+
+  const existing = new Set(queue.filter(isLocalTrack).map(track => track.localId));
+  const results = [];
+
+  files.forEach(file => {
+    if (!file.type.startsWith("audio/")) return;
+
+    const localId = makeLocalFileId(file);
+    if (existing.has(localId)) return;
+
+    const objectUrl = URL.createObjectURL(file);
+    results.push({
+      pageUrl: `local://${file.name}`,
+      audioUrl: objectUrl,
+      title: file.name,
+      source: "local-file",
+      localId
+    });
+    existing.add(localId);
+  });
+
+  if (results.length === 0) {
+    setStatus("No new audio files were added.", "info");
+    return;
+  }
+
+  queue = [...queue, ...results];
+  fileInput.value = "";
+  renderQueue();
+  saveState();
+  setStatus(`Added ${results.length} local file track${results.length > 1 ? "s" : ""} to your queue.`, "success");
+  setAddPanelState(false);
+};
+
 /* ── CONTROLS WIRING ────────────────────────────────── */
 addBtn.addEventListener("click", addUrls);
+addFilesBtn.addEventListener("click", addFiles);
 urlInput.addEventListener("keydown", e => {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) addUrls();
 });
