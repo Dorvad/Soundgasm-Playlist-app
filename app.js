@@ -28,6 +28,10 @@ const totalTimeEl     = document.getElementById("totalTime");
 const addPanelBody    = document.getElementById("addPanelBody");
 const addChevron      = document.getElementById("addChevron");
 const addPanelToggle  = document.getElementById("addPanelToggle");
+const ytInput         = document.getElementById("ytInput");
+const addYtBtn        = document.getElementById("addYtBtn");
+const ytPlayerWrap    = document.getElementById("ytPlayerWrap");
+const playerHero      = document.querySelector(".player-hero");
 
 /* ── STATE ──────────────────────────────────────────── */
 let queue        = [];
@@ -37,9 +41,26 @@ let isShuffled   = false;
 let isRepeat     = false;
 let isPlaying    = false;
 let isSeeking    = false;
+let ytPlayer      = null;
+let ytApiReady    = false;
+let ytApiCallbacks = [];
 
 /* ── HELPERS ────────────────────────────────────────── */
-const isDirectAudio = url => /\.(mp3|m4a|ogg)(\?.*)?$/i.test(url);
+const isDirectAudio  = url => /\.(mp3|m4a|ogg)(\?.*)?$/i.test(url);
+const isYouTubeTrack = track => track?.source === "youtube";
+
+const extractYtId = url => {
+  try {
+    const u = new URL(url.trim());
+    if (u.hostname.endsWith("youtube.com") && u.pathname === "/watch")
+      return u.searchParams.get("v");
+    if (u.hostname === "youtu.be")
+      return u.pathname.slice(1).split("?")[0] || null;
+    const shortsMatch = u.pathname.match(/^\/shorts\/([^/?]+)/);
+    if (shortsMatch) return shortsMatch[1];
+  } catch (_) {}
+  return null;
+};
 
 const formatTime = secs => {
   if (isNaN(secs) || secs < 0) return "0:00";
@@ -69,6 +90,47 @@ const revokeTrackUrl = track => {
   if (!isLocalTrack(track)) return;
   if (typeof track.audioUrl === "string" && track.audioUrl.startsWith("blob:")) {
     URL.revokeObjectURL(track.audioUrl);
+  }
+};
+
+/* ── YOUTUBE API ────────────────────────────────────── */
+const whenYtReady = cb => {
+  if (ytApiReady) { cb(); return; }
+  ytApiCallbacks.push(cb);
+};
+
+window.onYouTubeIframeAPIReady = () => {
+  ytApiReady = true;
+  ytApiCallbacks.forEach(cb => cb());
+  ytApiCallbacks = [];
+};
+
+const ensureYtPlayer = () => new Promise(resolve => {
+  whenYtReady(() => {
+    if (ytPlayer) { resolve(ytPlayer); return; }
+    ytPlayer = new YT.Player("ytPlayer", {
+      height: "100%",
+      width: "100%",
+      playerVars: { autoplay: 1, rel: 0, modestbranding: 1 },
+      events: {
+        onReady: () => resolve(ytPlayer),
+        onStateChange: e => {
+          if (e.data === YT.PlayerState.PLAYING) setVinylPlaying(true);
+          if (e.data === YT.PlayerState.PAUSED)  setVinylPlaying(false);
+          if (e.data === YT.PlayerState.ENDED)   handleYtEnded();
+        }
+      }
+    });
+  });
+});
+
+const handleYtEnded = () => {
+  setVinylPlaying(false);
+  if (isRepeat && currentIndex >= 0) {
+    ytPlayer?.seekTo(0);
+    ytPlayer?.playVideo();
+  } else {
+    playNext();
   }
 };
 
@@ -164,6 +226,11 @@ const updateNowPlaying = () => {
     nowPlayingUrl.textContent   = "Add tracks to get started";
     document.title = "Soundgasm Player";
   }
+
+  const track = queue[currentIndex];
+  const isYt = isYouTubeTrack(track);
+  ytPlayerWrap.style.display = isYt ? "" : "none";
+  playerHero.classList.toggle("player-hero--yt", isYt);
 };
 
 /* ── SEEK BAR SYNC ──────────────────────────────────── */
@@ -282,6 +349,8 @@ const renderQueue = () => {
     avatar.className = "queue-item__avatar";
     if (index === currentIndex && isPlaying) {
       avatar.innerHTML = `<div class="waveform"><span></span><span></span><span></span></div>`;
+    } else if (isYouTubeTrack(item)) {
+      avatar.innerHTML = `<svg viewBox="0 0 24 24" fill="#ff4040" width="20" height="20"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`;
     } else {
       avatar.textContent = initials(item.title || item.pageUrl);
     }
@@ -353,7 +422,7 @@ const playAtIndex = async index => {
   if (index < 0 || index >= queue.length) return;
   currentIndex = index;
   const track = queue[index];
-  audioEl.src = track.audioUrl;
+
   seekFill.style.width = "0%";
   seekThumb.style.left = "0%";
   currentTimeEl.textContent = "0:00";
@@ -362,12 +431,28 @@ const playAtIndex = async index => {
   renderQueue();
   saveState();
 
-  try {
-    await audioEl.play();
-    setStatus(`Playing: ${track.title || track.pageUrl}`, "success");
-  } catch (err) {
-    setStatus("Playback blocked — press play to continue.", "error");
-    console.error("Playback failed", err);
+  if (isYouTubeTrack(track)) {
+    audioEl.pause();
+    audioEl.removeAttribute("src");
+    audioEl.load();
+    try {
+      const player = await ensureYtPlayer();
+      player.loadVideoById(track.videoId);
+      setStatus(`Playing: ${track.title || track.pageUrl}`, "success");
+    } catch (err) {
+      setStatus("YouTube playback failed.", "error");
+      console.error("YT playback failed", err);
+    }
+  } else {
+    if (ytPlayer && typeof ytPlayer.stopVideo === "function") ytPlayer.stopVideo();
+    audioEl.src = track.audioUrl;
+    try {
+      await audioEl.play();
+      setStatus(`Playing: ${track.title || track.pageUrl}`, "success");
+    } catch (err) {
+      setStatus("Playback blocked — press play to continue.", "error");
+      console.error("Playback failed", err);
+    }
   }
 };
 
@@ -391,9 +476,19 @@ const playNext = () => {
 };
 
 const playPrev = () => {
-  if (audioEl.currentTime > 3) { audioEl.currentTime = 0; return; }
+  const track = queue[currentIndex];
+  if (isYouTubeTrack(track)) {
+    const pos = ytPlayer?.getCurrentTime?.() ?? 0;
+    if (pos > 3) { ytPlayer?.seekTo(0, true); return; }
+  } else {
+    if (audioEl.currentTime > 3) { audioEl.currentTime = 0; return; }
+  }
   const prevIndex = currentIndex - 1;
-  if (prevIndex < 0) { audioEl.currentTime = 0; return; }
+  if (prevIndex < 0) {
+    if (isYouTubeTrack(track)) ytPlayer?.seekTo(0, true);
+    else audioEl.currentTime = 0;
+    return;
+  }
   playAtIndex(prevIndex);
 };
 
@@ -401,6 +496,7 @@ const resetPlayer = () => {
   audioEl.pause();
   audioEl.removeAttribute("src");
   audioEl.load();
+  if (ytPlayer && typeof ytPlayer.stopVideo === "function") ytPlayer.stopVideo();
   currentIndex = -1;
   seekFill.style.width = "0%";
   seekThumb.style.left = "0%";
@@ -417,6 +513,7 @@ const removeAtIndex = index => {
     audioEl.pause();
     audioEl.removeAttribute("src");
     audioEl.load();
+    if (isYouTubeTrack(track) && ytPlayer?.stopVideo) ytPlayer.stopVideo();
     currentIndex = -1;
     updateNowPlaying();
   } else if (index < currentIndex) {
@@ -530,22 +627,94 @@ const addFiles = () => {
   setAddPanelState(false);
 };
 
+/* ── ADD YOUTUBE URLS ───────────────────────────────── */
+const addYouTubeUrls = async () => {
+  const lines = ytInput.value
+    .split("\n")
+    .map(l => l.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) {
+    setStatus("Paste at least one YouTube URL.", "error");
+    return;
+  }
+
+  const existingPageUrls = new Set(queue.map(t => t.pageUrl));
+  const toAdd = [];
+  const invalid = [];
+
+  for (const line of lines) {
+    const videoId = extractYtId(line);
+    if (!videoId) { invalid.push(line); continue; }
+    const pageUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    if (existingPageUrls.has(pageUrl)) continue;
+    existingPageUrls.add(pageUrl);
+    toAdd.push({ pageUrl, videoId });
+  }
+
+  if (invalid.length > 0) {
+    setStatus(`Could not parse ${invalid.length} URL(s) as YouTube links.`, "error");
+  }
+
+  if (toAdd.length === 0) {
+    if (invalid.length === 0) setStatus("Those YouTube URLs are already in your queue.", "info");
+    return;
+  }
+
+  addYtBtn.disabled = true;
+  setStatus(`Fetching ${toAdd.length} YouTube title(s)…`, "info");
+
+  const results = [];
+  for (const { pageUrl, videoId } of toAdd) {
+    let title = pageUrl;
+    try {
+      const res = await fetch(
+        `https://www.youtube.com/oembed?url=${encodeURIComponent(pageUrl)}&format=json`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        title = data.title || pageUrl;
+      }
+    } catch (_) {}
+    results.push({ pageUrl, videoId, title, source: "youtube" });
+  }
+
+  addYtBtn.disabled = false;
+  queue = [...queue, ...results];
+  ytInput.value = "";
+  renderQueue();
+  saveState();
+  setStatus(`Added ${results.length} YouTube track${results.length > 1 ? "s" : ""} to your queue.`, "success");
+  setAddPanelState(false);
+};
+
 /* ── CONTROLS WIRING ────────────────────────────────── */
 addBtn.addEventListener("click", addUrls);
 addFilesBtn.addEventListener("click", addFiles);
+addYtBtn.addEventListener("click", addYouTubeUrls);
 urlInput.addEventListener("keydown", e => {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) addUrls();
 });
+ytInput.addEventListener("keydown", e => {
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) addYouTubeUrls();
+});
 
 playBtn.addEventListener("click", () => {
-  if (isPlaying) {
-    audioEl.pause();
+  if (queue.length === 0) { setStatus("Add tracks to your queue first.", "info"); return; }
+  const track = currentIndex >= 0 ? queue[currentIndex] : null;
+
+  if (isYouTubeTrack(track)) {
+    if (isPlaying) ytPlayer?.pauseVideo();
+    else ytPlayer?.playVideo();
   } else {
-    if (queue.length === 0) { setStatus("Add tracks to your queue first.", "info"); return; }
-    if (currentIndex === -1) {
-      playAtIndex(0);
+    if (isPlaying) {
+      audioEl.pause();
     } else {
-      audioEl.play().catch(() => setStatus("Unable to resume.", "error"));
+      if (currentIndex === -1) {
+        playAtIndex(0);
+      } else {
+        audioEl.play().catch(() => setStatus("Unable to resume.", "error"));
+      }
     }
   }
 });
@@ -572,5 +741,6 @@ loadState();
 renderQueue();
 updateNowPlaying();
 if (currentIndex >= 0 && queue[currentIndex]) {
-  audioEl.src = queue[currentIndex].audioUrl;
+  const t = queue[currentIndex];
+  if (!isYouTubeTrack(t)) audioEl.src = t.audioUrl;
 }
