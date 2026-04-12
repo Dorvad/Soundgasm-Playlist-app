@@ -69,9 +69,17 @@ const formatTime = secs => {
   return `${m}:${s.toString().padStart(2, "0")}`;
 };
 
+let statusTimer = null;
 const setStatus = (msg, tone = "info") => {
+  clearTimeout(statusTimer);
   statusEl.textContent = msg;
   statusEl.dataset.tone = tone;
+  if (msg) {
+    statusTimer = setTimeout(() => {
+      statusEl.textContent = "";
+      delete statusEl.dataset.tone;
+    }, 4000);
+  }
 };
 
 const initials = str => {
@@ -263,14 +271,29 @@ const applySeek = e => {
     currentTimeEl.textContent = formatTime(audioEl.currentTime);
   }
 };
-seekBar.addEventListener("mousedown",  e => { isSeeking = true; applySeek(e); });
-seekBar.addEventListener("touchstart", e => { isSeeking = true; applySeek(e); }, { passive: true });
+seekBar.addEventListener("mousedown",  e => { isSeeking = true; seekBar.classList.add("is-seeking"); applySeek(e); });
+seekBar.addEventListener("touchstart", e => { isSeeking = true; seekBar.classList.add("is-seeking"); applySeek(e); }, { passive: true });
 document.addEventListener("mousemove",  e => { if (isSeeking) applySeek(e); });
 document.addEventListener("touchmove",  e => { if (isSeeking) applySeek(e); }, { passive: true });
-document.addEventListener("mouseup",   () => { isSeeking = false; });
-document.addEventListener("touchend",  () => { isSeeking = false; });
+document.addEventListener("mouseup",   () => { isSeeking = false; seekBar.classList.remove("is-seeking"); });
+document.addEventListener("touchend",  () => { isSeeking = false; seekBar.classList.remove("is-seeking"); });
 
 /* ── VINYL SPIN ─────────────────────────────────────── */
+const updateActiveAvatar = () => {
+  const activeItem = queueList.querySelector(".queue-item--active");
+  if (!activeItem) return;
+  const avatar = activeItem.querySelector(".queue-item__avatar");
+  if (!avatar) return;
+  const track = queue[currentIndex];
+  if (isPlaying) {
+    avatar.innerHTML = `<div class="waveform"><span></span><span></span><span></span></div>`;
+  } else if (isYouTubeTrack(track)) {
+    avatar.innerHTML = `<svg viewBox="0 0 24 24" fill="#ff4040" width="20" height="20"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`;
+  } else {
+    avatar.textContent = initials(track?.title || track?.pageUrl || "");
+  }
+};
+
 const setVinylPlaying = playing => {
   isPlaying = playing;
   if (playing) {
@@ -282,6 +305,7 @@ const setVinylPlaying = playing => {
     playBtn.querySelector(".play-icon").style.display  = "";
     playBtn.querySelector(".pause-icon").style.display = "none";
   }
+  updateActiveAvatar();
 };
 
 audioEl.addEventListener("play",  () => setVinylPlaying(true));
