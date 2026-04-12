@@ -507,6 +507,7 @@ input[type="file"]:hover::file-selector-button {
 
 .btn {
   all: unset;
+  box-sizing: border-box;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
