@@ -149,7 +149,9 @@ body {
 }
 
 .vinyl.is-playing { animation-play-state: running; }
-.vinyl.is-playing ~ .vinyl-ring--outer { animation-play-state: running; }
+/* vinyl-ring--outer precedes .vinyl in DOM, so ~ selector never matched.
+   Use :has() to start the outer ring when the disc is playing. */
+.vinyl-stage:has(.vinyl.is-playing) .vinyl-ring--outer { animation-play-state: running; }
 
 @keyframes vinylSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
@@ -341,6 +343,10 @@ body {
 .seek-bar:hover .seek-bar__thumb,
 .seek-bar:active .seek-bar__thumb { transform: translate(-50%, -50%) scale(1); }
 
+/* Disable transitions while actively dragging so thumb/fill track the pointer instantly */
+.seek-bar.is-seeking .seek-bar__fill,
+.seek-bar.is-seeking .seek-bar__thumb { transition: none !important; }
+
 /* ── STATUS ─────────────────────────────────────────── */
 .status-msg {
   font-size: 0.78rem;
@@ -474,7 +480,7 @@ input[type="file"]:hover {
   border-color: rgba(168,85,247,0.35);
   background: rgba(0,0,0,0.3);
 }
-input[type="file"]:focus-within {
+input[type="file"]:focus {
   border-color: rgba(168,85,247,0.5);
   box-shadow: 0 0 0 3px rgba(168,85,247,0.12);
 }
@@ -579,8 +585,39 @@ input[type="file"]:hover::file-selector-button {
   background: linear-gradient(to bottom, var(--purple-2), var(--pink));
   border-radius: 0 2px 2px 0;
 }
-.queue-item--dragging { opacity: 0.4; cursor: grabbing; }
-.queue-item--drag-over { background: rgba(168,85,247,0.1); box-shadow: inset 0 2px 0 var(--accent); }
+.queue-item--dragging {
+  opacity: 0.35;
+  cursor: grabbing;
+  background: rgba(168,85,247,0.04) !important;
+  outline: 1px dashed rgba(168,85,247,0.3);
+  outline-offset: -2px;
+}
+
+.drag-over-top,
+.drag-over-bottom {
+  position: relative;
+}
+.drag-over-top::before,
+.drag-over-bottom::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--purple-2), var(--pink));
+  box-shadow: 0 0 8px rgba(168,85,247,0.65);
+  z-index: 5;
+  pointer-events: none;
+  animation: insertionLine 0.12s var(--ease-out) both;
+}
+.drag-over-top::before  { top: 0; }
+.drag-over-bottom::after { bottom: 0; }
+
+@keyframes insertionLine {
+  from { opacity: 0; transform: scaleX(0.5); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
 
 .queue-item--empty {
   justify-content: center;

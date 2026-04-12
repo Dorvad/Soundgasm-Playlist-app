@@ -49,6 +49,20 @@ let ytApiCallbacks = [];
 const isDirectAudio  = url => /\.(mp3|m4a|ogg)(\?.*)?$/i.test(url);
 const isYouTubeTrack = track => track?.source === "youtube";
 
+const titleFromUrl = url => {
+  try {
+    const seg = new URL(url).pathname.split("/").filter(Boolean).pop() || "";
+    const cleaned = seg
+      .replace(/\.[^.]+$/, "")        // remove extension
+      .replace(/[-_]+/g, " ")          // dashes/underscores → spaces
+      .replace(/\s+/g, " ")
+      .trim();
+    return cleaned
+      ? cleaned.replace(/\b\w/g, c => c.toUpperCase())
+      : url;
+  } catch { return url; }
+};
+
 const extractYtId = url => {
   try {
     const u = new URL(url.trim());
@@ -69,9 +83,17 @@ const formatTime = secs => {
   return `${m}:${s.toString().padStart(2, "0")}`;
 };
 
+let statusTimer = null;
 const setStatus = (msg, tone = "info") => {
+  clearTimeout(statusTimer);
   statusEl.textContent = msg;
   statusEl.dataset.tone = tone;
+  if (msg) {
+    statusTimer = setTimeout(() => {
+      statusEl.textContent = "";
+      delete statusEl.dataset.tone;
+    }, 4000);
+  }
 };
 
 const initials = str => {
@@ -263,14 +285,29 @@ const applySeek = e => {
     currentTimeEl.textContent = formatTime(audioEl.currentTime);
   }
 };
-seekBar.addEventListener("mousedown",  e => { isSeeking = true; applySeek(e); });
-seekBar.addEventListener("touchstart", e => { isSeeking = true; applySeek(e); }, { passive: true });
+seekBar.addEventListener("mousedown",  e => { isSeeking = true; seekBar.classList.add("is-seeking"); applySeek(e); });
+seekBar.addEventListener("touchstart", e => { isSeeking = true; seekBar.classList.add("is-seeking"); applySeek(e); }, { passive: true });
 document.addEventListener("mousemove",  e => { if (isSeeking) applySeek(e); });
 document.addEventListener("touchmove",  e => { if (isSeeking) applySeek(e); }, { passive: true });
-document.addEventListener("mouseup",   () => { isSeeking = false; });
-document.addEventListener("touchend",  () => { isSeeking = false; });
+document.addEventListener("mouseup",   () => { isSeeking = false; seekBar.classList.remove("is-seeking"); });
+document.addEventListener("touchend",  () => { isSeeking = false; seekBar.classList.remove("is-seeking"); });
 
 /* ── VINYL SPIN ─────────────────────────────────────── */
+const updateActiveAvatar = () => {
+  const activeItem = queueList.querySelector(".queue-item--active");
+  if (!activeItem) return;
+  const avatar = activeItem.querySelector(".queue-item__avatar");
+  if (!avatar) return;
+  const track = queue[currentIndex];
+  if (isPlaying) {
+    avatar.innerHTML = `<div class="waveform"><span></span><span></span><span></span></div>`;
+  } else if (isYouTubeTrack(track)) {
+    avatar.innerHTML = `<svg viewBox="0 0 24 24" fill="#ff4040" width="20" height="20"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`;
+  } else {
+    avatar.textContent = initials(track?.title || track?.pageUrl || "");
+  }
+};
+
 const setVinylPlaying = playing => {
   isPlaying = playing;
   if (playing) {
@@ -282,6 +319,7 @@ const setVinylPlaying = playing => {
     playBtn.querySelector(".play-icon").style.display  = "";
     playBtn.querySelector(".pause-icon").style.display = "none";
   }
+  updateActiveAvatar();
 };
 
 audioEl.addEventListener("play",  () => setVinylPlaying(true));
@@ -317,26 +355,46 @@ const renderQueue = () => {
     // Drag events
     li.addEventListener("dragstart", e => {
       draggedIndex = index;
-      li.classList.add("queue-item--dragging");
       e.dataTransfer.effectAllowed = "move";
       e.dataTransfer.setData("text/plain", String(index));
+      // Apply dragging style after browser captures ghost image
+      requestAnimationFrame(() => li.classList.add("queue-item--dragging"));
     });
     li.addEventListener("dragend", () => {
       draggedIndex = null;
       li.classList.remove("queue-item--dragging");
-      queueList.querySelectorAll(".queue-item--drag-over").forEach(el => el.classList.remove("queue-item--drag-over"));
+      queueList.querySelectorAll(".drag-over-top, .drag-over-bottom").forEach(el => {
+        el.classList.remove("drag-over-top", "drag-over-bottom");
+      });
     });
     li.addEventListener("dragover", e => {
       e.preventDefault();
-      if (draggedIndex !== index) li.classList.add("queue-item--drag-over");
+      if (draggedIndex === index) return;
       e.dataTransfer.dropEffect = "move";
+      const rect = li.getBoundingClientRect();
+      const insertAfter = e.clientY > rect.top + rect.height / 2;
+      // Clear other items' indicators
+      queueList.querySelectorAll(".drag-over-top, .drag-over-bottom").forEach(el => {
+        if (el !== li) el.classList.remove("drag-over-top", "drag-over-bottom");
+      });
+      li.classList.toggle("drag-over-top",    !insertAfter);
+      li.classList.toggle("drag-over-bottom",  insertAfter);
     });
-    li.addEventListener("dragleave", () => li.classList.remove("queue-item--drag-over"));
+    li.addEventListener("dragleave", e => {
+      if (!li.contains(e.relatedTarget)) {
+        li.classList.remove("drag-over-top", "drag-over-bottom");
+      }
+    });
     li.addEventListener("drop", e => {
       e.preventDefault();
-      li.classList.remove("queue-item--drag-over");
+      li.classList.remove("drag-over-top", "drag-over-bottom");
       const from = draggedIndex ?? Number(e.dataTransfer.getData("text/plain"));
-      moveTrack(from, index);
+      const rect = li.getBoundingClientRect();
+      const insertAfter = e.clientY > rect.top + rect.height / 2;
+      const to = insertAfter
+        ? (from <= index ? index : index + 1)
+        : (from < index ? index - 1 : index);
+      moveTrack(from, to);
     });
 
     // Track number
@@ -559,7 +617,7 @@ const addUrls = async () => {
   const results = [];
   for (const pageUrl of unique) {
     if (isDirectAudio(pageUrl)) {
-      results.push({ pageUrl, audioUrl: pageUrl, title: pageUrl.split("/").pop() });
+      results.push({ pageUrl, audioUrl: pageUrl, title: titleFromUrl(pageUrl) });
       continue;
     }
     try {
@@ -567,7 +625,7 @@ const addUrls = async () => {
       if (!res.ok) { setStatus(`Could not resolve ${pageUrl}.`, "error"); continue; }
       const data = await res.json();
       if (!data.audioUrl) { setStatus(`No audio found for ${pageUrl}.`, "error"); continue; }
-      results.push({ pageUrl, audioUrl: data.audioUrl, title: data.title || pageUrl });
+      results.push({ pageUrl, audioUrl: data.audioUrl, title: data.title || titleFromUrl(pageUrl) });
     } catch (err) {
       console.error("Resolver error", err);
       setStatus(`Resolver error for ${pageUrl}.`, "error");
